@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FSC 電子支付資料系統</title>
+<link href="/static/css/bootstrap.min.css" rel="stylesheet">
+<link href="/static/css/bootstrap-icons.css" rel="stylesheet">
+<script src="/static/js/chart.umd.min.js"></script>
+<script src="/static/js/marked.min.js"></script>
+<style>
+:root{--sidebar-w:220px;--primary:#1a56db;--bg:#f0f4f8}
+body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px}
+#sidebar{width:var(--sidebar-w);min-height:100vh;background:#1e293b;position:fixed;top:0;left:0;z-index:100;padding-top:0;transition:transform .25s ease}
+#sidebar .brand{padding:18px 16px;background:#0f172a;color:#fff;font-weight:700;font-size:15px;border-bottom:1px solid #334155}
+#sidebar .nav-link{color:#94a3b8;padding:10px 16px;border-radius:6px;margin:2px 8px;display:flex;align-items:center;gap:8px;transition:.15s}
+#sidebar .nav-link:hover,#sidebar .nav-link.active{background:#334155;color:#fff}
+#sidebar .nav-link i{font-size:16px;width:20px}
+#main{margin-left:var(--sidebar-w);padding:24px}
+.page{display:none}.page.active{display:block}
+.card{border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card-header{background:#fff;border-bottom:1px solid #e2e8f0;border-radius:12px 12px 0 0!important;padding:14px 18px;font-weight:600}
+.stat-card{background:#fff;border-radius:12px;padding:14px 16px 12px;box-shadow:0 1px 4px rgba(0,0,0,.08);transition:.2s}
+.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.stat-num{font-size:20px;font-weight:700;color:#1e293b}
+.gauge-wrap{display:flex;justify-content:center;margin:4px 0 0}
+.stat-label{color:#64748b;font-size:12px}
+.table th{background:#f8fafc;font-weight:600;font-size:13px;white-space:nowrap}
+.table td{white-space:nowrap;font-size:13px}
+.table thead tr:first-child th[colspan]{border-bottom:2px solid #e2e8f0;font-size:12px;font-weight:700;text-transform:none}
+.table thead tr:last-child th{font-size:12px}
+/* Monthly Pass page */
+.mp-stat-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.mp-stat{background:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 1px 4px rgba(0,0,0,.08);flex:1;min-width:160px}
+.mp-stat .label{font-size:12px;color:#64748b;margin-bottom:4px}
+.mp-stat .val{font-size:22px;font-weight:700;color:#1e293b}
+.mp-stat .sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.mp-sys-bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap}
+.mp-sys-card{flex:1;min-width:140px;border-radius:10px;padding:12px 16px;color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mp-sys-card.svc{background:linear-gradient(135deg,#1a56db,#3b82f6)}
+.mp-sys-card.qr{background:linear-gradient(135deg,#7c3aed,#a78bfa)}
+.mp-sys-card .sys-label{font-size:13px;font-weight:700;opacity:.9;margin-bottom:6px}
+.mp-sys-card .sys-val{font-size:18px;font-weight:800}
+.mp-sys-card .sys-sub{font-size:11px;opacity:.8;margin-top:2px}
+.mp-section-title{font-size:14px;font-weight:700;color:#1e293b;margin:18px 0 10px;display:flex;align-items:center;gap:6px}
+.mp-table th{background:#f8fafc;font-size:12px;font-weight:600;white-space:nowrap}
+.mp-table td{font-size:13px;white-space:nowrap}
+.mp-table td.num{text-align:right;font-family:'SF Mono',monospace}
+.mp-table .sys-svc{background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.mp-table .sys-qr{background:#f5f3ff;color:#6d28d9;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
+.mp-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:767.98px){
+  .mp-chart-row{grid-template-columns:1fr}
+  .mp-sys-card{min-width:120px}
+}
+/* Docs page */
+#docs-wrap{display:flex;gap:0;min-height:calc(100vh - 80px)}
+#docs-nav{width:220px;flex-shrink:0;position:sticky;top:80px;align-self:flex-start;max-height:calc(100vh - 100px);overflow-y:auto;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:10px 0}
+#docs-nav a{display:block;padding:5px 14px;font-size:12px;color:#475569;text-decoration:none;border-left:2px solid transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.1s}
+#docs-nav a:hover,#docs-nav a.active{color:#1a56db;border-left-color:#1a56db;background:#eff6ff}
+#docs-nav .nav-section{padding:8px 14px 3px;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+#docs-content{flex:1;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);padding:28px 36px;min-width:0}
+#docs-content h1{font-size:20px;font-weight:800;color:#1e293b;border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin-bottom:16px}
+#docs-content h2{font-size:16px;font-weight:700;color:#1e293b;margin-top:28px;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+#docs-content h3{font-size:14px;font-weight:700;color:#1a56db;margin-top:22px;scroll-margin-top:80px;background:#eff6ff;padding:6px 12px;border-radius:6px;border-left:3px solid #1a56db}
+#docs-content table{width:100%;border-collapse:collapse;font-size:13px;margin:10px 0 18px}
+#docs-content table th{background:#f8fafc;padding:6px 10px;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap;text-align:left}
+#docs-content table td{padding:5px 10px;border:1px solid #e2e8f0;vertical-align:top}
+#docs-content table tr:hover td{background:#fafbfc}
+#docs-content code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:12px;font-family:'SF Mono',monospace;color:#0f172a}
+#docs-content pre{background:#1e293b;color:#e2e8f0;padding:14px 16px;border-radius:8px;overflow-x:auto;font-size:12px;line-height:1.6;margin:10px 0}
+#docs-content pre code{background:none;color:inherit;padding:0}
+#docs-content blockquote{border-left:3px solid #e2e8f0;margin:8px 0;padding:4px 14px;color:#64748b;font-size:13px}
+#docs-content hr{border:none;border-top:1px solid #e2e8f0;margin:20px 0}
+#docs-content p{font-size:13px;color:#374151;line-height:1.7;margin:6px 0}
+#docs-search{width:100%;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:8px}
+@media(max-width:767.98px){
+  #docs-nav{ display:none }
+  #docs-content{ padding:16px }
+}
+/* Row Detail Modal */
+.detail-inst-bar{background:#1e3a8a;color:#fff;border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+.detail-inst-bar .inst-name{font-size:15px;font-weight:700}
+.detail-inst-bar .inst-ym{font-size:13px;opacity:.85}
+.detail-group-hd{padding:7px 12px;font-weight:700;font-size:12px;border-radius:6px 6px 0 0;margin-top:10px;border:1px solid #e2e8f0;border-bottom:none}
+.detail-pivot-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-top:none;margin-bottom:0}
+.detail-pivot-table th{padding:5px 10px;font-size:12px;font-weight:600;text-align:right;white-space:nowrap}
+.detail-pivot-table th:first-child{text-align:left;width:45%}
+.detail-pivot-table td{padding:4px 10px;border-top:1px solid #f1f5f9;text-align:right;font-family:'SF Mono',monospace;white-space:nowrap}
+.detail-pivot-table td:first-child{text-align:left;color:#374151;font-family:inherit}
+.detail-pivot-table tr.row-highlight td{background:#eff6ff;font-weight:700;color:#1a56db}
+.detail-pivot-table tr:hover td{background:#fafafa}
+.detail-kv-table{width:100%;border-collapse:collapse;font-size:13px;border:1px solid #e2e8f0;border-top:none;margin-bottom:0}
+.detail-kv-table td{padding:5px 12px;border-top:1px solid #f1f5f9}
+.detail-kv-table td:first-child{color:#64748b;width:50%}
+.detail-kv-table td:last-child{text-align:right;font-family:'SF Mono',monospace}
+.detail-kv-table tr.row-highlight td{background:#eff6ff;font-weight:700;color:#1a56db}
+#browse-tbody tr{cursor:pointer}
+#browse-tbody tr:hover td{background:#f0f7ff!important}
+.diff-up{color:#16a34a;font-weight:600}
+.diff-down{color:#dc2626;font-weight:600}
+.diff-neutral{color:#64748b}
+.badge-up{background:#dcfce7;color:#16a34a;padding:2px 8px;border-radius:99px;font-size:12px}
+.badge-down{background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:12px}
+.badge-neutral{background:#f1f5f9;color:#64748b;padding:2px 8px;border-radius:99px;font-size:12px}
+.page-title{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.filter-bar{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.filter-bar label{font-size:12px;font-weight:600;color:#64748b;margin-bottom:3px;display:block}
+select.form-select,input.form-control{font-size:13px;border-radius:7px;border-color:#e2e8f0}
+.btn-primary{background:var(--primary);border-color:var(--primary);border-radius:7px;font-size:13px}
+.chart-box{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+#toast-container{position:fixed;top:16px;right:16px;z-index:9999}
+.import-zone{border:2px dashed #cbd5e1;border-radius:12px;padding:40px;text-align:center;background:#fff;cursor:pointer;transition:.2s}
+.import-zone:hover,.import-zone.dragover{border-color:var(--primary);background:#eff6ff}
+.import-zone i{font-size:40px;color:#94a3b8}
+.pagination .page-link{font-size:12px;padding:5px 10px;border-radius:5px!important;margin:0 2px;border:1px solid #e2e8f0}
+.pagination .page-item.active .page-link{background:var(--primary);border-color:var(--primary)}
+.table-responsive{border-radius:0 0 12px 12px}
+.topbar{background:#fff;border-bottom:1px solid #e2e8f0;margin:-24px -24px 24px;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.btn-menu{display:none;background:none;border:none;padding:4px 8px;cursor:pointer;color:#1e293b;font-size:22px;line-height:1;margin-right:8px}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99}
+@media(max-width:767.98px){
+  #sidebar{transform:translateX(-100%)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar-overlay.open{display:block}
+  #main{margin-left:0;padding:14px}
+  .topbar{margin:-14px -14px 14px;padding:12px 14px}
+  .btn-menu{display:inline-block}
+  .page-title{font-size:16px}
+  .filter-bar{padding:12px 14px;gap:10px}
+  .filter-bar > div{width:100%}
+  .filter-bar select,.filter-bar input,
+  #browse-table,#browse-yr-from,#browse-yr-to,#browse-mn,#browse-org,
+  #cmp-table,#cmp-org,#cmp-m1,#cmp-m2,
+  #trend-table,#trend-col,#trend-org,
+  #ind-metric,#ind-inst{width:100%!important}
+  .filter-bar .d-flex{width:100%;flex-wrap:wrap}
+  .filter-bar .btn{flex:1;min-width:120px}
+  .stat-num{font-size:17px}
+  .import-zone{padding:24px}
+}
+/* ── AI Chat ── */
+#page-chat{display:none;flex-direction:column;height:calc(100vh - 56px)}
+#page-chat.active{display:flex}
+#chat-status-bar{padding:6px 16px;font-size:12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e2e8f0;background:#fff;flex-shrink:0}
+#chat-status-bar .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot-ok{background:#22c55e}.dot-warn{background:#f59e0b}.dot-err{background:#ef4444}
+#chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;background:var(--bg)}
+.chat-bubble{max-width:85%;display:flex;flex-direction:column;gap:6px}
+.chat-bubble.user{align-self:flex-end;align-items:flex-end}
+.chat-bubble.ai{align-self:flex-start;align-items:flex-start}
+.bubble-text{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6;word-break:break-word}
+.chat-bubble.user .bubble-text{background:#1a56db;color:#fff;border-bottom-right-radius:3px}
+.chat-bubble.ai .bubble-text{background:#fff;color:#1e293b;border-bottom-left-radius:3px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.bubble-text p{margin:0 0 6px}.bubble-text p:last-child{margin:0}
+.bubble-text pre{background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:8px;overflow-x:auto;font-size:11px;margin:8px 0}
+.bubble-text code{background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:11px;font-family:'SF Mono',monospace}
+.bubble-text pre code{background:none;padding:0;color:inherit}
+.chat-sql-toggle{font-size:11px;color:#1a56db;cursor:pointer;display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:#eff6ff;border:none;margin-top:4px}
+.chat-sql-toggle:hover{background:#dbeafe}
+.chat-sql-block{background:#1e293b;color:#e2e8f0;padding:10px 12px;border-radius:8px;font-size:11px;font-family:'SF Mono',monospace;overflow-x:auto;margin-top:4px;display:none;white-space:pre}
+.chat-sql-block.open{display:block}
+.chat-result-wrap{background:#fff;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-top:4px;overflow:hidden;max-width:100%}
+.chat-result-header{padding:6px 12px;background:#f8fafc;font-size:11px;font-weight:600;color:#475569;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px}
+.chat-result-scroll{overflow-x:auto;max-height:240px;overflow-y:auto}
+.chat-result-table{font-size:11px;margin:0;min-width:100%}
+.chat-result-table th{background:#f8fafc;padding:5px 8px;white-space:nowrap;position:sticky;top:0;font-weight:600;border-bottom:1px solid #e2e8f0}
+.chat-result-table td{padding:4px 8px;white-space:nowrap;border-bottom:1px solid #f1f5f9}
+.chat-result-table tr:last-child td{border-bottom:none}
+.chat-analysis{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-top:6px;font-size:13px;color:#14532d;line-height:1.6}
+.chat-analysis p{margin:0 0 6px}.chat-analysis p:last-child{margin:0}
+.chat-err{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;margin-top:4px;font-size:12px;color:#991b1b}
+#chat-input-area{padding:12px 16px;background:#fff;border-top:1px solid #e2e8f0;flex-shrink:0}
+#chat-suggestions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chat-chip{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #e2e8f0;background:#f8fafc;color:#475569;cursor:pointer;transition:.15s}
+.chat-chip:hover{background:#eff6ff;border-color:#bfdbfe;color:#1a56db}
+#chat-form{display:flex;gap:8px}
+#chat-input{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:13px;resize:none;outline:none;min-height:38px;max-height:120px;font-family:inherit}
+#chat-input:focus{border-color:#1a56db;box-shadow:0 0 0 2px rgba(26,86,219,.1)}
+#chat-send{padding:8px 16px;background:#1a56db;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:5px;flex-shrink:0}
+#chat-send:hover{background:#1e40af}
+#chat-send:disabled{background:#94a3b8;cursor:not-allowed}
+.chat-thinking{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);font-size:13px;color:#64748b}
+.dots-anim span{animation:blink 1.4s infinite both}.dots-anim span:nth-child(2){animation-delay:.2s}.dots-anim span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:0}40%{opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar">
+  <div class="brand"><i class="bi bi-bank2 me-2"></i>FSC 資料系統</div>
+  <ul class="nav flex-column mt-2">
+    <li class="nav-item"><a class="nav-link active" href="#" data-page="dashboard"><i class="bi bi-speedometer2"></i>儀表板</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="browse"><i class="bi bi-table"></i>資料瀏覽</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="compare"><i class="bi bi-bar-chart-steps"></i>月份比較</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="trend"><i class="bi bi-graph-up-arrow"></i>趨勢圖</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="import"><i class="bi bi-cloud-upload"></i>匯入資料</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="industry"><i class="bi bi-bar-chart-line"></i>全業者統計</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="monthly-pass"><i class="bi bi-ticket-perforated"></i>月票統計</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="docs"><i class="bi bi-journal-text"></i>欄位說明</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-page="chat"><i class="bi bi-robot"></i>AI 分析助理</a></li>
+  </ul>
+</nav>
+
+<!-- Main -->
+<div id="main">
+
+<!-- ── 儀表板 ── -->
+<div class="page active" id="page-dashboard">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-speedometer2 text-primary"></i>儀表板</div>
+    </div>
+    <small class="text-muted" id="db-update-time"></small>
+  </div>
+  <div id="dashboard-kpi"></div>
+</div>
+
+<!-- ── 資料瀏覽 ── -->
+<div class="page" id="page-browse">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-table text-primary"></i>資料瀏覽</div>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div><label>資料表</label>
+      <select id="browse-table" class="form-select" style="width:220px"></select>
+    </div>
+    <div><label>起始年</label><input id="browse-yr-from" type="number" class="form-control" style="width:90px" placeholder="全部"></div>
+    <div><label>結束年</label><input id="browse-yr-to" type="number" class="form-control" style="width:90px" placeholder="全部"></div>
+    <div><label>月份</label>
+      <select id="browse-mn" class="form-select" style="width:80px">
+        <option value="">全部</option>
+        <option>1</option><option>2</option><option>3</option><option>4</option>
+        <option>5</option><option>6</option><option>7</option><option>8</option>
+        <option>9</option><option>10</option><option>11</option><option>12</option>
+      </select>
+    </div>
+    <div id="browse-org-wrap"><label>機構</label><select id="browse-org" class="form-select" style="width:160px"><option value="">全部</option></select></div>
+    <div id="browse-scheme-wrap" style="display:none"><label>方案</label>
+      <select id="browse-scheme" class="form-select" style="width:180px"><option value="">全部方案</option></select>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" onclick="browseLoad(1)"><i class="bi bi-search me-1"></i>查詢</button>
+      <button class="btn btn-outline-secondary" onclick="browseExport()"><i class="bi bi-download me-1"></i>匯出CSV</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header d-flex justify-content-between">
+      <span id="browse-count">共 0 筆</span>
+      <div id="browse-pagination" class="d-flex gap-1"></div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0" id="browse-table-el">
+        <thead id="browse-thead"></thead>
+        <tbody id="browse-tbody" translate="no"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── 資料列詳情 Modal ── -->
+<div class="modal fade" id="rowDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2 px-3">
+        <div>
+          <h6 class="modal-title mb-0 fw-bold" id="rowDetailTitle"></h6>
+          <small class="text-muted" id="rowDetailCode"></small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3" id="rowDetailBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 月份比較 ── -->
+<div class="page" id="page-compare">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-bar-chart-steps text-primary"></i>月份比較</div>
+    </div>
+  </div>
+
+  <!-- 篩選條件 -->
+  <div class="card mb-3">
+    <div class="card-body py-3">
+      <div class="d-flex flex-wrap gap-3 align-items-end">
+        <div>
+          <label class="form-label mb-1 small fw-semibold">資料表</label>
+          <select id="cmp-table" class="form-select form-select-sm" style="width:230px"></select>
+        </div>
+        <div id="cmp-org-wrap">
+          <label class="form-label mb-1 small fw-semibold">機構</label>
+          <select id="cmp-org" class="form-select form-select-sm" style="width:160px"><option value="">全部合計</option></select>
+        </div>
+        <div id="cmp-scheme-wrap" style="display:none">
+          <label class="form-label mb-1 small fw-semibold">方案名稱</label>
+          <select id="cmp-scheme" class="form-select form-select-sm" style="width:180px"><option value="">全部方案</option></select>
+        </div>
+        <div>
+          <label class="form-label mb-1 small fw-semibold">月份 A</label>
+          <select id="cmp-m1" class="form-select form-select-sm" style="width:120px"></select>
+        </div>
+        <div class="pb-1 text-muted fw-bold" style="font-size:18px">⇄</div>
+        <div>
+          <label class="form-label mb-1 small fw-semibold">月份 B</label>
+          <select id="cmp-m2" class="form-select form-select-sm" style="width:120px"></select>
+        </div>
+        <button class="btn btn-primary btn-sm px-3" onclick="compareLoad()">
+          <i class="bi bi-search me-1"></i>比較
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 空狀態 -->
+  <div id="cmp-empty" class="text-center text-muted py-5">
+    <i class="bi bi-bar-chart-steps" style="font-size:52px;opacity:.25"></i>
+    <p class="mt-3 mb-0">請選擇資料表與月份後按「比較」</p>
+  </div>
+
+  <!-- 結果區 -->
+  <div id="cmp-result" style="display:none">
+
+    <!-- 摘要 KPI 列 -->
+    <div class="row g-2 mb-3" id="cmp-summary"></div>
+
+    <!-- 長條圖 -->
+    <div class="card mb-3">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold" id="cmp-chart-title">增減幅度（%）</span>
+        <div class="d-flex align-items-center gap-3">
+          <span style="font-size:12px"><span style="display:inline-block;width:12px;height:12px;background:#16a34a;border-radius:2px;margin-right:4px"></span>增加</span>
+          <span style="font-size:12px"><span style="display:inline-block;width:12px;height:12px;background:#dc2626;border-radius:2px;margin-right:4px"></span>減少</span>
+          <span class="text-muted small" id="cmp-ym-label"></span>
+        </div>
+      </div>
+      <div class="card-body p-3">
+        <div id="cmp-chart-wrap"><canvas id="chart-compare"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 明細表 -->
+    <div class="card">
+      <div class="card-header py-2 d-flex align-items-center justify-content-between">
+        <span class="fw-semibold" id="cmp-card-title">差異明細</span>
+        <div class="d-flex gap-2 align-items-center">
+          <span class="badge rounded-pill" style="background:#6366f1;font-size:11px" id="cmp-badge-a">A</span>
+          <span class="badge rounded-pill" style="background:#ea580c;font-size:11px" id="cmp-badge-b">B</span>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="min-width:120px">欄位</th>
+              <th class="text-end" id="cmp-h1">月份 A</th>
+              <th class="text-end" id="cmp-h2">月份 B</th>
+              <th class="text-end" style="min-width:80px">差異</th>
+              <th style="min-width:140px">變動幅度</th>
+            </tr>
+          </thead>
+          <tbody id="cmp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── 趨勢圖 ── -->
+<div class="page" id="page-trend">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-graph-up-arrow text-primary"></i>趨勢分析</div>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <div><label>資料表</label><select id="trend-table" class="form-select" style="width:200px" onchange="trendTableChange()"></select></div>
+    <div><label>欄位</label><select id="trend-col" class="form-select" style="width:220px"></select></div>
+    <div id="trend-org-wrap"><label>機構</label><select id="trend-org" class="form-select" style="width:150px"><option value="">全部合計</option></select></div>
+    <div id="trend-scheme-wrap" style="display:none"><label>方案</label>
+      <select id="trend-scheme" class="form-select" style="width:180px"><option value="">全部方案</option></select>
+    </div>
+    <button class="btn btn-primary" onclick="trendLoad()"><i class="bi bi-graph-up me-1"></i>顯示</button>
+  </div>
+  <div class="row g-3">
+    <div class="col-12">
+      <div class="chart-box">
+        <canvas id="chart-trend" height="120"></canvas>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">統計摘要</div>
+        <div class="card-body" id="trend-stats"></div>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">月份明細</div>
+        <div class="table-responsive" style="max-height:300px;overflow-y:auto">
+          <table class="table table-sm mb-0">
+            <thead><tr><th>年/月</th><th class="text-end">數值</th><th class="text-end">月增</th><th class="text-center">趨勢</th></tr></thead>
+            <tbody id="trend-detail-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 匯入資料 ── -->
+<div class="page" id="page-import">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-cloud-upload text-primary"></i>匯入資料</div>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-7">
+      <!-- ebank JSON/CSV/Excel 匯入 -->
+      <div class="card mb-3">
+        <div class="card-header">上傳申報資料（JSON / CSV / Excel）</div>
+        <div class="card-body">
+          <div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <i class="bi bi-cloud-arrow-up d-block mb-2"></i>
+            <div class="fw-semibold mb-1">點擊或拖曳檔案至此</div>
+            <div class="text-muted small">支援 .json（ebank_all_data / ebank_XXXXX）、.csv、.xlsx（月票）格式</div>
+          </div>
+          <input type="file" id="file-input" accept=".json,.csv,.xlsx" class="d-none" onchange="fileSelected(this)">
+          <div id="file-info" class="mt-3 d-none">
+            <div class="d-flex align-items-center gap-2 p-3 bg-light rounded">
+              <i class="bi bi-file-earmark-text fs-4 text-primary"></i>
+              <div class="flex-grow-1">
+                <div class="fw-semibold" id="file-name"></div>
+                <div class="text-muted small" id="file-size"></div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="doImport()">
+                <i class="bi bi-upload me-1"></i>開始匯入
+              </button>
+            </div>
+          </div>
+          <div id="import-progress" class="mt-3 d-none">
+            <div class="d-flex align-items-center gap-2">
+              <div class="spinner-border spinner-border-sm text-primary"></div>
+              <span>匯入中，請稍候...</span>
+            </div>
+          </div>
+          <div id="import-result" class="mt-3 d-none"></div>
+        </div>
+      </div>
+
+      <!-- LINE Pay 脫鉤監控 PDF 匯入 -->
+      <div class="card">
+        <div class="card-header"><i class="bi bi-file-earmark-pdf text-danger me-1"></i>匯入脫鉤監控儀表板（PDF）</div>
+        <div class="card-body">
+          <div class="import-zone" id="pdf-drop-zone" onclick="document.getElementById('pdf-file-input').click()">
+            <i class="bi bi-file-pdf d-block mb-2 text-danger"></i>
+            <div class="fw-semibold mb-1">點擊或拖曳 PDF 至此</div>
+            <div class="text-muted small">LINE Pay 脫鉤監控儀表板 PDF（自動解析並寫入資料庫）</div>
+          </div>
+          <input type="file" id="pdf-file-input" accept=".pdf" class="d-none" onchange="pdfFileSelected(this)">
+          <div id="pdf-file-info" class="mt-3 d-none">
+            <div class="d-flex align-items-center gap-2 p-3 bg-light rounded">
+              <i class="bi bi-file-earmark-pdf fs-4 text-danger"></i>
+              <div class="flex-grow-1">
+                <div class="fw-semibold" id="pdf-file-name"></div>
+                <div class="text-muted small" id="pdf-file-size"></div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="doPdfImport()">
+                <i class="bi bi-upload me-1"></i>開始匯入
+              </button>
+            </div>
+          </div>
+          <div id="pdf-import-progress" class="mt-3 d-none">
+            <div class="d-flex align-items-center gap-2">
+              <div class="spinner-border spinner-border-sm text-danger"></div>
+              <span>解析 PDF 並匯入中，請稍候...</span>
+            </div>
+          </div>
+          <div id="pdf-import-result" class="mt-3 d-none"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-5">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-clock-history me-1"></i>匯入記錄</span>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadImportLog()"><i class="bi bi-arrow-clockwise"></i></button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive" style="max-height:400px;overflow-y:auto">
+            <table class="table table-sm mb-0">
+              <thead><tr><th>時間</th><th>表</th><th class="text-end">新增</th><th class="text-end">跳過</th></tr></thead>
+              <tbody id="import-log-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ 全業者統計 ═══════ -->
+<div id="page-industry" class="page">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-bar-chart-line text-primary"></i>全業者統計</div>
+    </div>
+  </div>
+  <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+    <select id="ind-metric" class="form-select form-select-sm" style="width:220px" onchange="indRefreshTrend()">
+      <option value="使用者人數">使用者人數</option>
+      <option value="代理收付金額_千元">代理收付金額（千元）</option>
+      <option value="移轉匯兌金額_千元">移轉匯兌金額（千元）</option>
+      <option value="收受儲值金額_千元">收受儲值金額（千元）</option>
+      <option value="各類餘額合計_千元">各類餘額合計（千元）</option>
+    </select>
+    <select id="ind-inst" class="form-select form-select-sm" style="width:200px" onchange="indRefreshTrend()">
+      <option value="">全部機構</option>
+    </select>
+    <small id="ind-latest-ym" class="text-muted"></small>
+  </div>
+
+  <!-- 趨勢折線圖 -->
+  <div class="card mb-3">
+    <div class="card-body p-2">
+      <canvas id="ind-trend-chart" height="90"></canvas>
+    </div>
+  </div>
+
+  <!-- 最新一期各機構表格 -->
+  <div class="card">
+    <div class="card-header py-2 d-flex align-items-center justify-content-between">
+      <span class="fw-bold small">最新一期各機構明細</span>
+      <span id="ind-table-ym" class="badge bg-secondary"></span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 small">
+          <thead class="table-light">
+            <tr>
+              <th>機構名稱</th>
+              <th class="text-end">使用者人數</th>
+              <th class="text-end">代理收付金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">移轉匯兌金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">收受儲值金額<br><small class="text-muted">千元</small></th>
+              <th class="text-end">各類餘額合計<br><small class="text-muted">千元</small></th>
+              <th>欄位說明</th>
+            </tr>
+          </thead>
+          <tbody id="ind-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 月票統計 ── -->
+<div id="page-monthly-pass" class="page">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-ticket-perforated text-primary"></i>行政院月票交易統計</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <label style="font-size:12px;color:#64748b">月份</label>
+      <select id="mp-ym-sel" class="form-select form-select-sm" style="width:110px" onchange="mpLoad()"></select>
+    </div>
+  </div>
+
+  <!-- KPI 列 -->
+  <div class="mp-stat-row" id="mp-kpi" translate="no"></div>
+
+  <!-- 方案排行色塊 -->
+  <div class="mp-section-title"><i class="bi bi-trophy text-primary"></i>方案排行（本月 Top 5）</div>
+  <div class="mp-sys-bar" id="mp-sys-cards" translate="no"></div>
+
+  <!-- 圖表列 -->
+  <div class="mp-chart-row">
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-graph-up text-primary"></i>各月趨勢（Top 5 方案筆數）</div>
+      <div style="position:relative;height:220px"><canvas id="mp-trend-chart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-pie-chart text-primary"></i>方案佔比（本月筆數）</div>
+      <div style="position:relative;height:220px"><canvas id="mp-pie-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 方案排行表 -->
+  <div class="mp-section-title"><i class="bi bi-list-ol text-primary"></i>各方案明細
+    <div class="ms-auto d-flex gap-2">
+      <select id="mp-sys-filter" class="form-select form-select-sm" style="width:100px" onchange="mpRenderScheme()">
+        <option value="">全部體系</option>
+        <option value="SVC">SVC</option>
+        <option value="QR">QR</option>
+      </select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-hover table-sm mb-0 mp-table" translate="no">
+        <thead><tr>
+          <th translate="yes">方案代碼</th><th translate="yes">方案名稱</th><th translate="yes">體系別</th>
+          <th class="text-end" translate="yes">交易筆數</th><th class="text-end" translate="yes">交易金額（元）</th>
+          <th class="text-end" translate="yes">筆數佔比</th>
+        </tr></thead>
+        <tbody id="mp-scheme-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 方案月趨勢表 -->
+  <div class="mp-section-title mt-4"><i class="bi bi-table text-primary"></i>方案月份彙整（Top 5 方案筆數）</div>
+  <div class="card">
+    <div class="table-responsive">
+      <table id="mp-scheme-trend-table" class="table table-hover table-sm mb-0 mp-table" translate="no">
+        <thead><tr id="mp-scheme-trend-thead"></tr></thead>
+        <tbody id="mp-scheme-trend-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ── 欄位說明 ── -->
+<div id="page-docs" class="page">
+  <div class="topbar">
+    <div class="d-flex align-items-center">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-journal-text text-primary"></i>欄位說明</div>
+    </div>
+    <input type="text" id="docs-search-top" class="form-control form-control-sm" style="width:200px" placeholder="搜尋表名或欄位…" oninput="docsFilter(this.value)">
+  </div>
+  <div id="docs-wrap">
+    <nav id="docs-nav">
+      <div class="nav-section">快速導覽</div>
+      <div id="docs-nav-links"></div>
+    </nav>
+    <div id="docs-content"><div class="text-center text-muted py-5"><i class="bi bi-arrow-clockwise"></i> 載入中…</div></div>
+  </div>
+</div>
+
+<!-- ── AI Chat ── -->
+<div id="page-chat" class="page">
+  <div class="topbar" style="flex-shrink:0">
+    <div class="d-flex align-items:center gap-2">
+      <button class="btn-menu" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+      <div class="page-title mb-0"><i class="bi bi-robot text-primary"></i>AI 分析助理</div>
+    </div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="chatClear()"><i class="bi bi-trash3"></i> 清除對話</button>
+  </div>
+
+  <!-- Status bar -->
+  <div id="chat-status-bar">
+    <span class="dot dot-warn" id="chat-dot"></span>
+    <span id="chat-status-text">正在檢查 Ollama 連線…</span>
+    <span id="chat-model-badge" style="display:none;margin-left:auto;background:#eff6ff;color:#1a56db;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600"></span>
+  </div>
+
+  <!-- Messages -->
+  <div id="chat-messages">
+    <div class="chat-bubble ai" id="chat-welcome">
+      <div class="bubble-text">
+        <strong>您好！</strong> 我是 FSC 電子支付資料分析助理，由 Gemma 4 驅動。<br>
+        您可以用自然語言詢問資料庫中的任何問題，我會自動生成 SQL 並分析結果。<br><br>
+        <em>請先確認已安裝並啟動 <code>ollama</code>，並已拉取模型：</em><br>
+        <code>ollama pull gemma4:e2b-it-q4_K_M</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input area -->
+  <div id="chat-input-area">
+    <div id="chat-suggestions">
+      <span class="chat-chip" onclick="chatChip(this)">哪家機構的電支帳戶最多？</span>
+      <span class="chat-chip" onclick="chatChip(this)">最新月份的全業者總交易金額？</span>
+      <span class="chat-chip" onclick="chatChip(this)">月票交易各方案筆數排名</span>
+      <span class="chat-chip" onclick="chatChip(this)">行動支付業務近半年趨勢</span>
+      <span class="chat-chip" onclick="chatChip(this)">境外業務客戶數最多的機構</span>
+    </div>
+    <div id="chat-form">
+      <textarea id="chat-input" placeholder="輸入問題，例如：哪家機構的交易金額最高？（Enter 送出，Shift+Enter 換行）" rows="1"></textarea>
+      <button id="chat-send" onclick="chatSend()"><i class="bi bi-send-fill"></i> 送出</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- Mobile sidebar overlay -->
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Utils ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = v => v == null ? '-' : Number(v).toLocaleString('zh-TW', {maximumFractionDigits:2});
+
+function toast(msg, type='success'){
+  const el = document.createElement('div');
+  el.className = `alert alert-${type} py-2 px-3 shadow-sm`;
+  el.style.cssText = 'min-width:240px;font-size:13px;border-radius:8px';
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(), 3500);
+}
+
+async function api(url){
+  const r = await fetch(url);
+  return r.json();
+}
+
+// ── Mobile sidebar toggle ───────────────────────────────────
+function toggleSidebar(){
+  const s=$('sidebar'), o=$('sidebar-overlay');
+  s.classList.toggle('open');
+  o.classList.toggle('open');
+}
+
+// ── Navigation ─────────────────────────────────────────────
+document.querySelectorAll('#sidebar .nav-link').forEach(el=>{
+  el.addEventListener('click', e=>{
+    e.preventDefault();
+    document.querySelectorAll('#sidebar .nav-link').forEach(x=>x.classList.remove('active'));
+    el.classList.add('active');
+    const page = el.dataset.page;
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    $('page-'+page).classList.add('active');
+    if(page==='dashboard') loadDashboard();
+    if(page==='browse') initBrowse();
+    if(page==='compare') initCompare();
+    if(page==='trend') initTrend();
+    if(page==='import') loadImportLog();
+    if(page==='industry') { if(!indLoaded) { indLoaded=true; loadIndustryPage(); } }
+    if(page==='docs') initDocs();
+    if(page==='monthly-pass') initMonthlyPass();
+    // 手機：點選後自動關閉 sidebar
+    if(window.innerWidth < 768){
+      $('sidebar').classList.remove('open');
+      $('sidebar-overlay').classList.remove('open');
+    }
+  });
+});
+
+// ══════════════════════════════════════════════════════════
+// Dashboard
+// ══════════════════════════════════════════════════════════
+function fmtBig(v){
+  if(v==null) return '-';
+  const n = Math.abs(v);
+  if(n>=1e8)  return (v/1e8).toFixed(2)+'億';
+  if(n>=1e4)  return (v/1e4).toFixed(1)+'萬';
+  return Number(v).toLocaleString('zh-TW');
+}
+
+function trendBadge(pct){
+  if(pct==null) return '<span class="badge-neutral small">─</span>';
+  const abs = Math.abs(pct).toFixed(2);
+  if(pct>0)  return `<span class="badge-up small">▲${abs}%</span>`;
+  if(pct<0)  return `<span class="badge-down small">▼${abs}%</span>`;
+  return '<span class="badge-neutral small">─</span>';
+}
+
+// 指針式儀表 SVG（量程 ±20%，超過則貼邊）
+function gaugeHtml(pct){
+  const cx=50, cy=50, R=36, NR=30;
+  // pct=null → 顯示空錶盤
+  const SCALE = 20; // ±20% 為滿偏
+  const p = pct==null ? 0 : Math.max(-SCALE, Math.min(SCALE, pct));
+  // angle: -SCALE → 180°, 0 → 90°, +SCALE → 0°
+  const ang = (180 - (p + SCALE) / (SCALE*2) * 180) * Math.PI / 180;
+  const nx = (cx + NR*Math.cos(ang)).toFixed(2);
+  const ny = (cy - NR*Math.sin(ang)).toFixed(2);
+
+  // 彩色弧：從中間(90°)到指針位置
+  const mx = cx.toFixed(2), my = (cy-R).toFixed(2);  // 中間頂點
+  const ex = (cx + R*Math.cos(ang)).toFixed(2);
+  const ey = (cy - R*Math.sin(ang)).toFixed(2);
+  const color = pct==null ? '#94a3b8' : pct>0 ? '#16a34a' : pct<0 ? '#dc2626' : '#94a3b8';
+  // sweep: pct>0 → 順時針(1)，pct<0 → 逆時針(0)
+  const arcSweep = p >= 0 ? 1 : 0;
+  const colorArc = (pct!=null && Math.abs(p)>0.05)
+    ? `<path d="M ${mx} ${my} A ${R} ${R} 0 0 ${arcSweep} ${ex} ${ey}"
+         fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" opacity="0.85"/>`
+    : '';
+
+  // 刻度標籤
+  const labels = pct==null ? '' :
+    `<text x="11" y="54" font-size="8" fill="#94a3b8" text-anchor="middle">-${SCALE}%</text>
+     <text x="50" y="16" font-size="8" fill="#94a3b8" text-anchor="middle">0</text>
+     <text x="89" y="54" font-size="8" fill="#94a3b8" text-anchor="middle">+${SCALE}%</text>`;
+
+  const pctTxt = pct==null ? '─'
+    : (pct>0?'+':'')+pct.toFixed(1)+'%';
+
+  return `<svg viewBox="0 0 100 62" width="100" height="62">
+    <path d="M 14 50 A 36 36 0 0 1 86 50" fill="none" stroke="#e2e8f0" stroke-width="5" stroke-linecap="round"/>
+    <line x1="50" y1="14" x2="50" y2="20" stroke="#cbd5e1" stroke-width="1.5"/>
+    ${colorArc}
+    <line x1="${cx}" y1="${cy}" x2="${nx}" y2="${ny}"
+      stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#1e293b"/>
+    ${labels}
+    <text x="50" y="63" font-size="9.5" font-weight="700" fill="${color}"
+      text-anchor="middle">${pctTxt}</text>
+  </svg>`;
+}
+
+async function loadDashboard(){
+  $('db-update-time').textContent = '最後讀取：'+new Date().toLocaleString('zh-TW');
+  const [groups, mpBySystem] = await Promise.all([
+    api('/api/dashboard'),
+    api('/api/monthly_pass/by_system')
+  ]);
+
+  let html = groups.map(g=>`
+    <div class="mb-4">
+      <div class="d-flex align-items-center gap-2 mb-2">
+        <span class="fw-bold fs-6 text-dark">${g.group}</span>
+        <span class="badge bg-secondary fw-normal">${g.table}</span>
+        <small class="text-muted ms-1">最新：${g.latest_ym}
+          ${g.prev_ym?`<span class="text-muted">（對比 ${g.prev_ym}）</span>`:''}
+        </small>
+        <button class="btn btn-sm btn-outline-primary ms-auto py-0 px-2"
+                style="font-size:12px" onclick="goBrowse('${g.table}')">
+          <i class="bi bi-table me-1"></i>瀏覽
+        </button>
+      </div>
+      <div class="row g-2">
+        ${g.kpis.map(k=>`
+          <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+            <div class="stat-card h-100" style="cursor:default">
+              <div class="stat-label mb-1">${k.label}</div>
+              <div class="stat-num">${fmtBig(k.value)}</div>
+              <div class="d-flex justify-content-between align-items-center mt-1">
+                <small class="text-muted">${k.unit}</small>
+                ${trendBadge(k.pct)}
+              </div>
+              <div class="gauge-wrap">${gaugeHtml(k.pct)}</div>
+              ${k.prev!=null?`<div class="text-muted text-center" style="font-size:10px;margin-top:2px">
+                前月：${fmtBig(k.prev)}</div>`:''}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  // ── 月票交易統計區塊 ────────────────────────────────────
+  if(mpBySystem && mpBySystem.length){
+    const allYms   = [...new Set(mpBySystem.map(r=>r.ym))].sort();
+    const latestYm = allYms[allYms.length-1];
+    const prevYm   = allYms.length>1 ? allYms[allYms.length-2] : null;
+
+    const makeMap = ym => {
+      const m = {};
+      mpBySystem.filter(r=>r.ym===ym).forEach(r=>{ m[r['體系別']]=r; });
+      return m;
+    };
+    const lat  = makeMap(latestYm);
+    const prev = prevYm ? makeMap(prevYm) : null;
+
+    const svc  = lat['SVC']||{交易筆數:0,交易金額:0};
+    const qr   = lat['QR'] ||{交易筆數:0,交易金額:0};
+    const totX = (svc['交易筆數']||0)+(qr['交易筆數']||0);
+    const totA = (svc['交易金額']||0)+(qr['交易金額']||0);
+    const pct  = (cur,prv,k)=> prv&&prv[k] ? Math.round((cur[k]-prv[k])/Math.abs(prv[k])*1000)/10 : null;
+
+    const prevTotX = prev ? ((prev['SVC']?.['交易筆數']||0)+(prev['QR']?.['交易筆數']||0)) : null;
+    const prevTotA = prev ? ((prev['SVC']?.['交易金額']||0)+(prev['QR']?.['交易金額']||0)) : null;
+
+    const _SVC_COLOR='#1a56db', _QR_COLOR='#7c3aed', _TOT_COLOR='#0f766e';
+    const kpis = [
+      {label:'SVC 交易筆數', value:svc['交易筆數'], prev:prev?.['SVC']?.['交易筆數'], pct:pct(svc,prev?.['SVC'],'交易筆數'), unit:'筆', color:_SVC_COLOR},
+      {label:'SVC 交易金額', value:svc['交易金額'], prev:prev?.['SVC']?.['交易金額'], pct:pct(svc,prev?.['SVC'],'交易金額'), unit:'元', color:_SVC_COLOR},
+      {label:'QR 交易筆數',  value:qr['交易筆數'],  prev:prev?.['QR']?.['交易筆數'],  pct:pct(qr, prev?.['QR'], '交易筆數'), unit:'筆', color:_QR_COLOR},
+      {label:'QR 交易金額',  value:qr['交易金額'],  prev:prev?.['QR']?.['交易金額'],  pct:pct(qr, prev?.['QR'], '交易金額'), unit:'元', color:_QR_COLOR},
+      {label:'合計筆數', value:totX, prev:prevTotX, pct:prevTotX?Math.round((totX-prevTotX)/Math.abs(prevTotX)*1000)/10:null, unit:'筆', color:_TOT_COLOR},
+      {label:'合計金額', value:totA, prev:prevTotA, pct:prevTotA?Math.round((totA-prevTotA)/Math.abs(prevTotA)*1000)/10:null, unit:'元', color:_TOT_COLOR},
+    ];
+
+    html += `
+      <div class="mb-4">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="fw-bold fs-6 text-dark">月票交易統計</span>
+          <span class="badge bg-secondary fw-normal">月票交易統計</span>
+          <small class="text-muted ms-1">最新：${latestYm}
+            ${prevYm?`<span class="text-muted">（對比 ${prevYm}）</span>`:''}
+          </small>
+          <button class="btn btn-sm btn-outline-primary ms-auto py-0 px-2"
+                  style="font-size:12px" onclick="document.querySelector('[data-page=&quot;monthly-pass&quot;]').click()">
+            <i class="bi bi-ticket-perforated me-1"></i>月票統計
+          </button>
+        </div>
+        <div class="row g-2">
+          ${kpis.map(k=>`
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="stat-card h-100" style="cursor:default;border-top:3px solid ${k.color}">
+                <div class="stat-label mb-1">${k.label}</div>
+                <div class="stat-num">${fmtBig(k.value)}</div>
+                <div class="d-flex justify-content-between align-items-center mt-1">
+                  <small class="text-muted">${k.unit}</small>
+                  ${trendBadge(k.pct)}
+                </div>
+                <div class="gauge-wrap">${gaugeHtml(k.pct)}</div>
+                ${k.prev!=null?`<div class="text-muted text-center" style="font-size:10px;margin-top:2px">
+                  前月：${fmtBig(k.prev)}</div>`:''}
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  $('dashboard-kpi').innerHTML = html;
+}
+
+function goBrowse(code){
+  document.querySelector('[data-page="browse"]').click();
+  setTimeout(()=>{ $('browse-table').value=code; browseLoad(1); },100);
+}
+
+// ══════════════════════════════════════════════════════════
+// Browse
+// ══════════════════════════════════════════════════════════
+let browsePage = 1, browseTotal = 0, browsePerPage = 50;
+let browseData = {columns:[], rows:[]};
+
+// 月票交易統計 專用：顯示方案選擇器，隱藏機構選擇器
+function isMpTable(code){ return code === '月票交易統計'; }
+
+function toggleSchemeOrg(code){
+  const mp = isMpTable(code);
+  const orgWraps   = ['browse-org-wrap','cmp-org-wrap','trend-org-wrap'];
+  const schemWraps = ['browse-scheme-wrap','cmp-scheme-wrap','trend-scheme-wrap'];
+  orgWraps.forEach(id=>{ const el=$id(id); if(el) el.style.display = mp?'none':''; });
+  schemWraps.forEach(id=>{ const el=$id(id); if(el) el.style.display = mp?'':'none'; });
+}
+function $id(id){ return document.getElementById(id); }
+
+async function initBrowse(){
+  const tables = await api('/api/tables');
+  $('browse-table').innerHTML = tables.map(t=>`<option value="${t.code}">${t.code} ${t.desc}</option>`).join('');
+  $('browse-table').addEventListener('change', ()=>loadBrowseOrgs());
+  await loadBrowseOrgs();
+  browseLoad(1);
+}
+
+async function loadBrowseOrgs(){
+  const code = $('browse-table').value;
+  toggleSchemeOrg(code);
+  const data = await api(`/api/table/${code}/data?per_page=1`);
+  $('browse-org').innerHTML = '<option value="">全部</option>' +
+    data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('browse-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
+}
+
+let browseStructure = null;
+
+async function browseLoad(page){
+  browsePage = page||1;
+  const code = $('browse-table').value;
+  const yr   = $('browse-yr-from').value;
+  const yrTo = $('browse-yr-to').value;
+  const mn   = $('browse-mn').value;
+  const org    = $('browse-org').value;
+  const scheme = $('browse-scheme').value;
+
+  // Fetch structure for this table
+  browseStructure = await api(`/api/table/${code}/structure`);
+
+  let url = `/api/table/${code}/data?page=${browsePage}&per_page=${browsePerPage}`;
+  if(browseStructure) url += `&structured=1`;
+  if(yr)     url+=`&yr=${yr}`;
+  if(yrTo)   url+=`&yr_to=${yrTo}`;
+  if(mn)     url+=`&mn=${mn}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
+
+  const data = await api(url);
+  browseData = data;
+  browseTotal = data.total;
+
+  $('browse-count').textContent = `共 ${data.total.toLocaleString()} 筆`;
+
+  if(browseStructure){
+    // ── 多層次表頭（靜態欄 + 群組色塊）────────────────────────
+    const stat = browseStructure.static || [];
+    const groups = browseStructure.groups || [];
+    const statSet = new Set(stat.map(s=>s.col));
+
+    // 建立 col → index map（依 data.columns 的實際順序）
+    const colIdx = {};
+    data.columns.forEach((c,i)=>{ colIdx[c]=i; });
+
+    // Row 1：靜態欄(rowspan=2) + 群組名稱(colspan=N)
+    let row1 = stat.map(s=>{
+      const i = colIdx[s.col];
+      const lbl = (data.col_labels&&data.col_labels[i])||s.label||s.col;
+      return `<th rowspan="2" style="vertical-align:middle;background:#f8fafc">${lbl}</th>`;
+    }).join('');
+    row1 += groups.map(g=>{
+      const visibleCols = g.cols.filter(c=>c.col in colIdx);
+      if(!visibleCols.length) return '';
+      return `<th colspan="${visibleCols.length}" style="background:${g.bg||'#f8fafc'};text-align:center;border-bottom:none">${g.name}</th>`;
+    }).join('');
+
+    // Row 2：群組內各欄
+    let row2 = groups.map(g=>
+      g.cols.filter(c=>c.col in colIdx).map(c=>{
+        const i = colIdx[c.col];
+        const lbl = (data.col_labels&&data.col_labels[i])||c.label||c.col;
+        const hl = c.highlight ? 'font-weight:700;color:#1a56db' : '';
+        return `<th style="background:${g.bg||'#f8fafc'};${hl}">${lbl}</th>`;
+      }).join('')
+    ).join('');
+
+    $('browse-thead').innerHTML = `<tr>${row1}</tr><tr>${row2}</tr>`;
+
+    // 建立渲染順序（靜態 + 各群組欄依序）
+    const orderedCols = [
+      ...stat.map(s=>s.col),
+      ...groups.flatMap(g=>g.cols.map(c=>c.col))
+    ].filter(c=>c in colIdx);
+
+    $('browse-tbody').innerHTML = data.rows.map((r, ri)=>
+      `<tr onclick="showRowDetail(${ri})">${orderedCols.map(c=>{
+        const v = r[colIdx[c]];
+        return `<td>${v!=null?v:''}</td>`;
+      }).join('')}</tr>`
+    ).join('');
+
+  } else {
+    // ── 單層表頭（fallback）────────────────────────────────────
+    const labels = data.col_labels || data.columns;
+    $('browse-thead').innerHTML = '<tr>' + data.columns.map((c,i)=>{
+      const lbl = labels[i] || c;
+      const isSys = /^_\d+|^c_\d+/.test(c) || ['cards','xact','amt'].includes(c);
+      const style = isSys ? 'color:#6366f1;font-size:11px' : '';
+      const title = (isSys && lbl !== c) ? ` title="${c}"` : '';
+      return `<th style="${style}"${title}>${lbl}</th>`;
+    }).join('') + '</tr>';
+    $('browse-tbody').innerHTML = data.rows.map((r, ri)=>
+      `<tr onclick="showRowDetail(${ri})">${r.map(v=>`<td>${v!=null?v:''}</td>`).join('')}</tr>`
+    ).join('');
+  }
+
+  // Pagination
+  const totalPages = Math.ceil(data.total / browsePerPage);
+  let pages = '';
+  if(totalPages > 1){
+    pages += `<button class="btn btn-sm btn-outline-secondary" ${browsePage<=1?'disabled':''} onclick="browseLoad(${browsePage-1})">‹</button>`;
+    const start = Math.max(1, browsePage-2), end = Math.min(totalPages, browsePage+2);
+    if(start>1) pages+=`<span class="btn btn-sm btn-outline-secondary disabled">…</span>`;
+    for(let i=start;i<=end;i++)
+      pages+=`<button class="btn btn-sm ${i===browsePage?'btn-primary':'btn-outline-secondary'}" onclick="browseLoad(${i})">${i}</button>`;
+    if(end<totalPages) pages+=`<span class="btn btn-sm btn-outline-secondary disabled">…</span>`;
+    pages+=`<button class="btn btn-sm btn-outline-secondary" ${browsePage>=totalPages?'disabled':''} onclick="browseLoad(${browsePage+1})">›</button>`;
+  }
+  $('browse-pagination').innerHTML = pages;
+}
+
+function browseExport(){
+  const code   = $('browse-table').value;
+  const yr     = $('browse-yr-from').value;
+  const yrTo   = $('browse-yr-to').value;
+  const mn     = $('browse-mn').value;
+  const org    = $('browse-org').value;
+  const scheme = $('browse-scheme').value;
+  let url = `/api/table/${code}/export?`;
+  if(yr)     url+=`yr=${yr}&`;
+  if(yrTo)   url+=`yr_to=${yrTo}&`;
+  if(mn)     url+=`mn=${mn}&`;
+  if(org)    url+=`org=${encodeURIComponent(org)}&`;
+  if(scheme) url+=`scheme=${encodeURIComponent(scheme)}&`;
+  window.open(url, '_blank');
+}
+
+// ══════════════════════════════════════════════════════════
+// Compare
+// ══════════════════════════════════════════════════════════
+let cmpChart = null;
+
+async function initCompare(){
+  const tables = await api('/api/tables');
+  $('cmp-table').innerHTML = tables.filter(t=>t.yr_range).map(t=>`<option value="${t.code}">${t.code} ${t.desc}</option>`).join('');
+  $('cmp-table').addEventListener('change', cmpTableChange);
+  await cmpTableChange();
+}
+
+async function cmpTableChange(){
+  const code = $('cmp-table').value;
+  toggleSchemeOrg(code);
+  const [months, data] = await Promise.all([
+    api(`/api/table/${code}/months`),
+    api(`/api/table/${code}/data?per_page=1`)
+  ]);
+  const opts = months.map(m=>`<option value="${m.yr}_${m.mn}">${m.label}</option>`).join('');
+  $('cmp-m1').innerHTML = opts;
+  $('cmp-m2').innerHTML = opts;
+  if(months.length>1) $('cmp-m2').selectedIndex=1;
+  $('cmp-org').innerHTML = '<option value="">全部合計</option>' + data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('cmp-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
+}
+
+async function compareLoad(){
+  const code   = $('cmp-table').value;
+  const m1v    = $('cmp-m1').value.split('_');
+  const m2v    = $('cmp-m2').value.split('_');
+  const org    = $('cmp-org').value;
+  const scheme = $('cmp-scheme').value;
+  let url = `/api/table/${code}/compare?yr1=${m1v[0]}&mn1=${m1v[1]}&yr2=${m2v[0]}&mn2=${m2v[1]}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
+
+  const data = await api(url);
+  if(data.error){ toast(data.error,'danger'); return; }
+
+  $('cmp-empty').style.display  = 'none';
+  $('cmp-result').style.display = '';
+
+  const L1 = data.label1, L2 = data.label2;
+  $('cmp-h1').textContent      = L1;
+  $('cmp-h2').textContent      = L2;
+  $('cmp-card-title').textContent  = `${L1} vs ${L2} 差異明細`;
+  $('cmp-chart-title').textContent = `${L1} vs ${L2} — 各欄增減幅度（%）`;
+  $('cmp-ym-label').textContent    = `A=${L1}  B=${L2}`;
+  $('cmp-badge-a').textContent = `A  ${L1}`;
+  $('cmp-badge-b').textContent = `B  ${L2}`;
+
+  const rows = data.rows.filter(r => r.v1!=null || r.v2!=null);
+
+  // ── 摘要 KPI ───────────────────────────────────────────
+  const withPct  = rows.filter(r => r.pct != null);
+  const upCount  = withPct.filter(r => r.pct > 0).length;
+  const dnCount  = withPct.filter(r => r.pct < 0).length;
+  const maxUp    = withPct.reduce((mx,r)=> r.pct>mx.pct?r:mx, {pct:-Infinity,col:'-'});
+  const maxDn    = withPct.reduce((mn,r)=> r.pct<mn.pct?r:mn, {pct:Infinity, col:'-'});
+  $('cmp-summary').innerHTML = [
+    {icon:'bi-arrow-up-circle-fill', color:'#16a34a', label:'增加欄位數', val:upCount,       unit:'項'},
+    {icon:'bi-arrow-down-circle-fill',color:'#dc2626', label:'減少欄位數', val:dnCount,       unit:'項'},
+    {icon:'bi-graph-up-arrow',       color:'#6366f1', label:'最大增幅',   val:maxUp.pct!=null&&maxUp.pct>-Infinity ? `+${maxUp.pct}%` : '-', unit:maxUp.col},
+    {icon:'bi-graph-down-arrow',     color:'#ea580c', label:'最大減幅',   val:maxDn.pct!=null&&maxDn.pct<Infinity  ? `${maxDn.pct}%`  : '-', unit:maxDn.col},
+  ].map(k=>`
+    <div class="col-6 col-md-3">
+      <div class="card text-center py-2 px-1">
+        <i class="bi ${k.icon} mb-1" style="font-size:22px;color:${k.color}"></i>
+        <div style="font-size:12px;color:#64748b">${k.label}</div>
+        <div style="font-size:20px;font-weight:700;color:${k.color}">${k.val}</div>
+        <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${k.unit}">${k.unit}</div>
+      </div>
+    </div>`).join('');
+
+  // ── 水平長條圖（按絕對增減幅度排序，最多 20 項）──────
+  const chartItems = [...rows]
+    .filter(r => r.pct != null)
+    .sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 20);
+
+  if(cmpChart) cmpChart.destroy();
+  if(chartItems.length > 0){
+    const barH   = 32;
+    const padTop = 20, padBot = 30;
+    const canvasH = chartItems.length * barH + padTop + padBot;
+    $('cmp-chart-wrap').style.height = canvasH + 'px';
+    $('chart-compare').style.height  = canvasH + 'px';
+
+    const bgColors = chartItems.map(r =>
+      r.pct > 0 ? 'rgba(22,163,74,0.75)' : r.pct < 0 ? 'rgba(220,38,38,0.75)' : 'rgba(148,163,184,0.5)');
+    const bdColors = chartItems.map(r =>
+      r.pct > 0 ? '#16a34a' : r.pct < 0 ? '#dc2626' : '#94a3b8');
+
+    cmpChart = new Chart($('chart-compare'), {
+      type: 'bar',
+      data: {
+        labels: chartItems.map(r => { const s=r.label||r.col; return s.length>14?s.slice(0,13)+'…':s; }),
+        datasets: [{
+          label: '增減幅度 %',
+          data: chartItems.map(r => r.pct),
+          backgroundColor: bgColors,
+          borderColor: bdColors,
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: c => chartItems[c[0].dataIndex].label || chartItems[c[0].dataIndex].col,
+              label: c => {
+                const r = chartItems[c.dataIndex];
+                const sign = c.parsed.x >= 0 ? '+' : '';
+                return [
+                  ` 增減：${sign}${c.parsed.x.toFixed(2)}%`,
+                  ` ${L1}：${fmt(r.v1)}`,
+                  ` ${L2}：${fmt(r.v2)}`
+                ];
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#e2e8f0' },
+            ticks: { callback: v => v+'%', font:{size:11} },
+            title: { display: true, text: 'B 相對 A 的變動 (%)', font:{size:11}, color:'#64748b' }
+          },
+          y: { ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // ── 明細表格（內嵌小型進度條）──────────────────────────
+  const MAX_PCT = Math.max(...rows.filter(r=>r.pct!=null).map(r=>Math.abs(r.pct)), 1);
+  $('cmp-tbody').innerHTML = rows.map(r => {
+    const cls     = r.pct>0?'diff-up':r.pct<0?'diff-down':'diff-neutral';
+    const diffStr = r.diff!=null ? (r.diff>=0?'+':'')+fmt(r.diff) : '-';
+    const pctStr  = r.pct!=null  ? (r.pct>=0?'+':'')+r.pct+'%'    : '-';
+    const barW    = r.pct!=null  ? Math.round(Math.abs(r.pct)/MAX_PCT*100) : 0;
+    const barClr  = r.pct>0 ? '#16a34a' : r.pct<0 ? '#dc2626' : '#94a3b8';
+    // 顯示標籤；若 label 與 col 不同則同時顯示欄位名作為 tooltip
+    const displayName = (r.label && r.label !== r.col)
+      ? `<span title="${r.col}">${r.label}</span>`
+      : r.col;
+    const barHtml = r.pct!=null ? `
+      <div class="d-flex align-items-center gap-1">
+        <div style="flex:1;height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${barClr};border-radius:4px;transition:.3s"></div>
+        </div>
+        <span class="${cls}" style="font-size:11px;min-width:46px;text-align:right">${pctStr}</span>
+      </div>` : '<span class="text-muted">─</span>';
+    return `<tr>
+      <td class="fw-medium">${displayName}</td>
+      <td class="text-end" style="color:#6366f1">${fmt(r.v1)}</td>
+      <td class="text-end" style="color:#ea580c">${fmt(r.v2)}</td>
+      <td class="text-end ${cls}">${diffStr}</td>
+      <td>${barHtml}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" class="text-center text-muted py-3">無資料</td></tr>';
+}
+
+// ══════════════════════════════════════════════════════════
+// Trend
+// ══════════════════════════════════════════════════════════
+let trendChart = null;
+
+async function initTrend(){
+  const tables = await api('/api/tables');
+  $('trend-table').innerHTML = tables.filter(t=>t.yr_range).map(t=>`<option value="${t.code}">${t.code} ${t.desc}</option>`).join('');
+  await trendTableChange();
+}
+
+async function trendTableChange(){
+  const code = $('trend-table').value;
+  toggleSchemeOrg(code);
+  const [cols, data] = await Promise.all([
+    api(`/api/table/${code}/columns`),
+    api(`/api/table/${code}/data?per_page=1`)
+  ]);
+  const numCols = cols.filter(c=>c.numeric && !['yr','mn'].includes(c.name));
+  $('trend-col').innerHTML = numCols.map(c=>`<option value="${c.name}">${c.label||c.name}</option>`).join('');
+  $('trend-org').innerHTML = '<option value="">全部合計</option>' + data.orgs.map(o=>`<option>${o}</option>`).join('');
+  if(data.schemes && data.schemes.length){
+    $('trend-scheme').innerHTML = '<option value="">全部方案</option>' +
+      data.schemes.map(s=>`<option>${s}</option>`).join('');
+  }
+}
+
+async function trendLoad(){
+  const code   = $('trend-table').value;
+  const col    = $('trend-col').value;
+  const org    = $('trend-org').value;
+  const scheme = $('trend-scheme').value;
+  if(!col){ toast('請選擇欄位','warning'); return; }
+
+  let url = `/api/table/${code}/trend?col=${encodeURIComponent(col)}`;
+  if(org)    url+=`&org=${encodeURIComponent(org)}`;
+  if(scheme) url+=`&scheme=${encodeURIComponent(scheme)}`;
+
+  const rows = await api(url);
+  const valid = rows.filter(r=>r.val!=null);
+  if(!valid.length){ toast('無資料','warning'); return; }
+
+  // Chart
+  if(trendChart) trendChart.destroy();
+  trendChart = new Chart($('chart-trend'),{
+    type:'line',
+    data:{
+      labels: valid.map(r=>r.label),
+      datasets:[{
+        label:col,
+        data: valid.map(r=>r.val),
+        borderColor:'rgba(26,86,219,0.9)',
+        backgroundColor:'rgba(26,86,219,0.08)',
+        fill:true,
+        tension:0.3,
+        pointRadius:3,
+        pointHoverRadius:5
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.parsed.y.toLocaleString()}`}}},
+      scales:{y:{ticks:{callback:v=>v.toLocaleString()}},x:{ticks:{maxTicksLimit:18,font:{size:10}}}},
+      maintainAspectRatio:false
+    }
+  });
+
+  // Stats
+  const vals = valid.map(r=>r.val);
+  const mn_val=Math.min(...vals), mx_val=Math.max(...vals), avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  const last=valid[valid.length-1].val, prev=valid.length>1?valid[valid.length-2].val:null;
+  const mom = prev?((last-prev)/Math.abs(prev)*100).toFixed(1):null;
+  $('trend-stats').innerHTML = `
+    <div class="row g-2 text-center">
+      <div class="col-6"><div class="p-2 bg-light rounded"><div class="text-muted small">最新</div><div class="fw-bold">${fmt(last)}</div></div></div>
+      <div class="col-6"><div class="p-2 bg-light rounded"><div class="text-muted small">月增率</div>
+        <div class="fw-bold ${mom>0?'text-success':mom<0?'text-danger':''}">${mom!=null?(mom>=0?'+':'')+mom+'%':'-'}</div></div></div>
+      <div class="col-6"><div class="p-2 bg-light rounded"><div class="text-muted small">最大值</div><div class="fw-bold">${fmt(mx_val)}</div></div></div>
+      <div class="col-6"><div class="p-2 bg-light rounded"><div class="text-muted small">平均值</div><div class="fw-bold">${fmt(avg)}</div></div></div>
+      <div class="col-12"><div class="p-2 bg-light rounded"><div class="text-muted small">資料期間</div><div class="fw-bold small">${valid[0].label} ～ ${valid[valid.length-1].label}（${valid.length}個月）</div></div></div>
+    </div>`;
+
+  // Detail table with MoM
+  $('trend-detail-tbody').innerHTML = [...valid].reverse().map((r,i,arr)=>{
+    const prv = arr[i+1];
+    const m = prv&&prv.val?((r.val-prv.val)/Math.abs(prv.val)*100).toFixed(1):null;
+    const badge = m==null?'' : m>=0
+      ? `<span class="badge-up">▲${Math.abs(m)}%</span>`
+      : `<span class="badge-down">▼${Math.abs(m)}%</span>`;
+    const mStr = m==null?'-':(m>=0?'+':'')+m+'%';
+    return `<tr><td>${r.label}</td><td class="text-end">${fmt(r.val)}</td><td class="text-end ${m>0?'diff-up':m<0?'diff-down':''}">${mStr}</td><td class="text-center">${badge}</td></tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// Import
+// ══════════════════════════════════════════════════════════
+let selectedFile = null;
+
+const dropZone = $('drop-zone');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('dragover')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if(e.dataTransfer.files[0]) showFileInfo(e.dataTransfer.files[0]);
+});
+
+const pdfDropZone = $('pdf-drop-zone');
+pdfDropZone.addEventListener('dragover',e=>{e.preventDefault();pdfDropZone.classList.add('dragover')});
+pdfDropZone.addEventListener('dragleave',()=>pdfDropZone.classList.remove('dragover'));
+pdfDropZone.addEventListener('drop',e=>{
+  e.preventDefault(); pdfDropZone.classList.remove('dragover');
+  if(e.dataTransfer.files[0]) showPdfFileInfo(e.dataTransfer.files[0]);
+});
+
+function fileSelected(inp){ if(inp.files[0]) showFileInfo(inp.files[0]); }
+function pdfFileSelected(inp){ if(inp.files[0]) showPdfFileInfo(inp.files[0]); }
+
+function showFileInfo(file){
+  selectedFile = file;
+  $('file-name').textContent = file.name;
+  $('file-size').textContent = (file.size/1024).toFixed(1)+' KB';
+  $('file-info').classList.remove('d-none');
+  $('import-result').classList.add('d-none');
+}
+
+async function doImport(){
+  if(!selectedFile){ toast('請先選擇檔案','warning'); return; }
+  $('import-progress').classList.remove('d-none');
+  $('import-result').classList.add('d-none');
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  try{
+    const r = await fetch('/api/import',{method:'POST',body:fd});
+    const data = await r.json();
+    $('import-progress').classList.add('d-none');
+    if(data.error){
+      $('import-result').innerHTML=`<div class="alert alert-danger">${data.error}</div>`;
+    } else {
+      const rows = data.results.map(r=>`<tr><td>${r.table}</td><td class="text-success text-end">+${r.added}</td><td class="text-muted text-end">${r.skipped}</td></tr>`).join('');
+      $('import-result').innerHTML=`
+        <div class="alert alert-success">
+          <strong>匯入完成！</strong> 新增 ${data.total_added} 筆，跳過重複 ${data.total_skipped} 筆
+        </div>
+        <table class="table table-sm"><thead><tr><th>資料表</th><th class="text-end">新增</th><th class="text-end">跳過</th></tr></thead><tbody>${rows}</tbody></table>`;
+      toast(`成功匯入 ${data.total_added} 筆資料`);
+      loadImportLog();
+    }
+    $('import-result').classList.remove('d-none');
+  }catch(e){
+    $('import-progress').classList.add('d-none');
+    $('import-result').innerHTML=`<div class="alert alert-danger">${e.message}</div>`;
+    $('import-result').classList.remove('d-none');
+  }
+}
+
+let selectedPdfFile = null;
+
+function showPdfFileInfo(file){
+  selectedPdfFile = file;
+  $('pdf-file-name').textContent = file.name;
+  $('pdf-file-size').textContent = (file.size/1024).toFixed(1)+' KB';
+  $('pdf-file-info').classList.remove('d-none');
+  $('pdf-import-result').classList.add('d-none');
+}
+
+async function doPdfImport(){
+  if(!selectedPdfFile){ toast('請先選擇 PDF 檔案','warning'); return; }
+  $('pdf-import-progress').classList.remove('d-none');
+  $('pdf-import-result').classList.add('d-none');
+
+  const fd = new FormData();
+  fd.append('file', selectedPdfFile);
+  try{
+    const r = await fetch('/api/import',{method:'POST',body:fd});
+    const data = await r.json();
+    $('pdf-import-progress').classList.add('d-none');
+    if(data.error){
+      $('pdf-import-result').innerHTML=`<div class="alert alert-danger">${data.error}</div>`;
+    } else {
+      const rows = data.results.map(r=>`<tr><td>${r.table}</td><td class="text-success text-end">+${r.added}</td><td class="text-muted text-end">${r.skipped}</td></tr>`).join('');
+      $('pdf-import-result').innerHTML=`
+        <div class="alert alert-success">
+          <strong>匯入完成！</strong> 共寫入 ${data.total_added} 筆脫鉤監控資料
+        </div>
+        <table class="table table-sm"><thead><tr><th>資料表</th><th class="text-end">新增</th><th class="text-end">跳過</th></tr></thead><tbody>${rows}</tbody></table>`;
+      toast(`脫鉤監控 PDF 匯入成功，共 ${data.total_added} 筆`);
+      loadImportLog();
+    }
+    $('pdf-import-result').classList.remove('d-none');
+  }catch(e){
+    $('pdf-import-progress').classList.add('d-none');
+    $('pdf-import-result').innerHTML=`<div class="alert alert-danger">${e.message}</div>`;
+    $('pdf-import-result').classList.remove('d-none');
+  }
+}
+
+async function loadImportLog(){
+  const logs = await api('/api/import_log');
+  $('import-log-tbody').innerHTML = logs.map(l=>`
+    <tr>
+      <td><small>${l.imported_at.slice(5,16).replace('T',' ')}</small></td>
+      <td><span class="badge bg-secondary">${l.table_code}</span></td>
+      <td class="text-end text-success">+${l.rows_added}</td>
+      <td class="text-end text-muted">${l.rows_skipped}</td>
+    </tr>`).join('') || '<tr><td colspan="4" class="text-center text-muted py-3">尚無記錄</td></tr>';
+}
+
+// ═══════ 全業者統計 ═══════
+let indTrendChart = null;
+let indLoaded = false;
+
+async function loadIndustryPage() {
+  // 載入機構清單
+  const insts = await api('/api/industry/institutions');
+  const sel = $('ind-inst');
+  insts.forEach(inst => {
+    const opt = document.createElement('option');
+    opt.value = inst; opt.textContent = inst;
+    sel.appendChild(opt);
+  });
+  // 載入最新期資料
+  await indRefreshLatest();
+  await indRefreshTrend();
+}
+
+async function indRefreshTrend() {
+  const metric = $('ind-metric').value;
+  const inst   = $('ind-inst').value;
+  const data   = await api(`/api/industry/trend?metric=${encodeURIComponent(metric)}&inst=${encodeURIComponent(inst)}`);
+
+  const labels = data.map(d => d.ym);
+  const values = data.map(d => d.value);
+
+  if (indTrendChart) indTrendChart.destroy();
+  indTrendChart = new Chart($('ind-trend-chart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: metric,
+        data: values,
+        borderColor: '#0d6efd',
+        backgroundColor: 'rgba(13,110,253,0.08)',
+        borderWidth: 2,
+        pointRadius: 2,
+        fill: true,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 18, font: { size: 11 } } },
+        y: { ticks: { font: { size: 11 }, callback: v => v >= 1e8 ? (v/1e8).toFixed(1)+'億' : v >= 1e4 ? (v/1e4).toFixed(0)+'萬' : v } }
+      }
+    }
+  });
+}
+
+async function indRefreshLatest() {
+  const result = await api('/api/industry/latest');
+  $('ind-latest-ym').textContent = '最新資料：' + result.ym;
+  $('ind-table-ym').textContent  = result.ym;
+  $('ind-table-body').innerHTML  = result.data.map(r => `
+    <tr>
+      <td>${r.機構名稱}</td>
+      <td class="text-end">${fmtBig(r.使用者人數)}</td>
+      <td class="text-end">${fmtBig(r.代理收付金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.移轉匯兌金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.收受儲值金額_千元)}</td>
+      <td class="text-end">${fmtBig(r.各類餘額合計_千元)}</td>
+      <td><small class="text-muted">${r.欄位說明||''}</small></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// Row Detail Modal
+// ══════════════════════════════════════════════════════════
+
+let _rowDetailModal = null;
+
+function showRowDetail(ri){
+  const row  = browseData.rows[ri];
+  const cols = browseData.columns;
+  const lbls = browseData.col_labels || cols;
+  const code = $('browse-table').value;
+
+  // 建立 col -> value map（原始欄名）
+  const dataMap = {};
+  cols.forEach((c,i)=>{ dataMap[c] = row[i]; });
+
+  // Header
+  const inst = dataMap['機構名稱'] || '';
+  const yr   = dataMap['yr'] || '';
+  const mn   = dataMap['mn'] || '';
+  $('rowDetailTitle').textContent = inst || code;
+  $('rowDetailCode').textContent  = `${code}　${yr} 年 ${mn} 月`;
+
+  let html = '';
+
+  if(browseStructure){
+    // ── 依 TABLE_STRUCTURE 群組渲染 ─────────────────────────
+    // 先加靜態欄（排除 yr/mn/機構名稱）
+    const skipStatic = new Set(['yr','mn','ym','機構名稱','資料月份']);
+    const extraStatic = (browseStructure.static||[]).filter(s=>!skipStatic.has(s.col) && dataMap[s.col]!=null && dataMap[s.col]!=='');
+    if(extraStatic.length){
+      html += '<div class="detail-group-hd" style="background:#f8fafc;margin-top:0">基本資訊</div>';
+      html += '<table class="detail-kv-table"><tbody>';
+      for(const s of extraStatic){
+        html += `<tr><td>${s.label||s.col}</td><td>${fmtN(dataMap[s.col])}</td></tr>`;
+      }
+      html += '</tbody></table>';
+    }
+
+    for(const g of browseStructure.groups){
+      const gCols = g.cols.filter(c=> cols.includes(c.col));
+      if(!gCols.length) continue;
+
+      // 跳過整組全 null
+      const hasData = gCols.some(c=> dataMap[c.col]!=null && dataMap[c.col]!=='');
+      if(!hasData) continue;
+
+      html += `<div class="detail-group-hd" style="background:${g.bg||'#f8fafc'}">${g.name}</div>`;
+
+      // 偵測 ×人數/×筆數/×金額 三指標 pivot 模式
+      const METRICS_SUFFIX = ['×人數','×筆數','×金額'];
+      const isTriple = gCols.length >= 3 && gCols.length % 3 === 0
+        && gCols.every(c=> METRICS_SUFFIX.some(m=> c.label.endsWith(m)));
+
+      if(isTriple){
+        // Pivot 成矩陣表：列=類別，欄=人數/筆數/金額
+        html += `<table class="detail-pivot-table">
+          <thead><tr style="background:${g.bg||'#f8fafc'}">
+            <th>使用者類別</th>
+            <th>使用者人數</th><th>交易筆數</th><th>交易金額（元）</th>
+          </tr></thead><tbody>`;
+        for(let i=0; i<gCols.length; i+=3){
+          const cat = gCols[i].label.replace('×人數','');
+          const hl  = gCols[i].highlight ? ' class="row-highlight"' : '';
+          html += `<tr${hl}>
+            <td>${cat}</td>
+            <td>${fmtN(dataMap[gCols[i].col])}</td>
+            <td>${fmtN(dataMap[gCols[i+1].col])}</td>
+            <td>${fmtN(dataMap[gCols[i+2].col])}</td>
+          </tr>`;
+        }
+        html += '</tbody></table>';
+      } else {
+        // 一般 label-value 表
+        html += '<table class="detail-kv-table"><tbody>';
+        for(const c of gCols){
+          const v = dataMap[c.col];
+          if(v==null || v==='') continue;
+          const hl = c.highlight ? ' class="row-highlight"' : '';
+          html += `<tr${hl}><td>${c.label}</td><td>${fmtN(v)}</td></tr>`;
+        }
+        html += '</tbody></table>';
+      }
+    }
+
+  } else {
+    // ── Fallback：所有欄依序顯示 ───────────────────────────
+    html += '<table class="detail-kv-table"><tbody>';
+    cols.forEach((c,i)=>{
+      const v = row[i];
+      if(v==null || v==='') return;
+      const isMeta = ['yr','mn','ym','機構名稱','資料月份'].includes(c);
+      if(isMeta) return;
+      html += `<tr><td>${lbls[i]||c}</td><td>${fmtN(v)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+  }
+
+  $('rowDetailBody').innerHTML = html;
+  if(!_rowDetailModal) _rowDetailModal = new bootstrap.Modal(document.getElementById('rowDetailModal'));
+  _rowDetailModal.show();
+}
+
+function fmtN(v){
+  if(v==null || v==='') return '—';
+  const n = Number(String(v).replace(/,/g,''));
+  if(!isNaN(n) && String(v).trim()!=='') return n.toLocaleString('zh-TW');
+  return v;
+}
+
+// ══════════════════════════════════════════════════════════
+// Docs page
+// ══════════════════════════════════════════════════════════
+
+let _docsLoaded = false;
+let _docsRawHtml = '';
+
+async function initDocs(){
+  if(_docsLoaded) return;
+  const md = await fetch('/api/docs').then(r=>r.text());
+
+  // Configure marked
+  marked.setOptions({ gfm:true, breaks:false });
+  _docsRawHtml = marked.parse(md);
+
+  $('docs-content').innerHTML = _docsRawHtml;
+
+  // Add IDs to h3 headings for anchor nav
+  $('docs-content').querySelectorAll('h3').forEach((el,i)=>{
+    if(!el.id){
+      el.id = 'sec-' + i;
+    }
+  });
+
+  // Build nav links from h2 + h3
+  const navEl = $('docs-nav-links');
+  let navHtml = '';
+  $('docs-content').querySelectorAll('h2,h3').forEach(el=>{
+    if(el.tagName==='H2'){
+      navHtml += `<div class="nav-section" style="margin-top:6px">${el.textContent}</div>`;
+    } else {
+      const code = el.textContent.match(/^[A-Z0-9]{4,6}/)?.[0] || '';
+      const label = code ? `<span style="color:#1a56db;font-weight:700;margin-right:4px">${code}</span>${el.textContent.replace(code,'').split(' ')[0]}` : el.textContent;
+      navHtml += `<a href="#${el.id}" onclick="docsScrollTo('${el.id}')">${label}</a>`;
+    }
+  });
+  navEl.innerHTML = navHtml;
+
+  // Highlight active nav on scroll
+  const observer = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        navEl.querySelectorAll('a').forEach(a=>a.classList.toggle('active', a.getAttribute('href')==='#'+e.target.id));
+      }
+    });
+  }, {rootMargin:'-20% 0px -70% 0px'});
+  $('docs-content').querySelectorAll('h3').forEach(el=>observer.observe(el));
+
+  _docsLoaded = true;
+}
+
+function docsScrollTo(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function docsFilter(q){
+  if(!_docsLoaded) return;
+  q = q.trim().toLowerCase();
+  if(!q){
+    $('docs-content').innerHTML = _docsRawHtml;
+    // Re-add IDs
+    $('docs-content').querySelectorAll('h3').forEach((el,i)=>{ el.id='sec-'+i; });
+    return;
+  }
+  // Highlight matching sections: show h3 + its following content until next h3
+  const nodes = Array.from($('docs-content').children);
+  // Re-parse and filter by section
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(_docsRawHtml, 'text/html');
+  const allNodes = Array.from(doc.body.children);
+  let result = '', inMatch = false;
+  for(const n of allNodes){
+    if(n.tagName==='H3'){
+      inMatch = n.textContent.toLowerCase().includes(q);
+    }
+    if(n.tagName==='H1'||n.tagName==='H2'||n.tagName==='HR'){
+      result += n.outerHTML; continue;
+    }
+    if(inMatch || n.outerHTML.toLowerCase().includes(q)){
+      result += n.outerHTML;
+    }
+  }
+  $('docs-content').innerHTML = result;
+  $('docs-content').querySelectorAll('h3').forEach((el,i)=>{ el.id='sec-'+i; });
+}
+
+// ══════════════════════════════════════════════════════════
+// Monthly Pass Page
+// ══════════════════════════════════════════════════════════
+
+let _mpLoaded = false;
+let _mpBySystem = [];       // all months × system (SVC/QR)
+let _mpScheme = [];         // current month schemes (by 方案+體系別)
+let _mpSchemeMonthly = [];  // all months × scheme (SVC+QR combined)
+let _mpTrendChart = null;
+let _mpPieChart = null;
+
+// 取前 n 名方案（依筆數）
+function mpTopSchemes(schemeRows, n=5){
+  const map = {};
+  schemeRows.forEach(r=>{
+    const k = r['方案代碼'];
+    if(!map[k]) map[k]={代碼:k, 名稱:r['方案名稱'], 筆數:0, 金額:0};
+    map[k].筆數 += r['交易筆數']||0;
+    map[k].金額 += r['交易金額']||0;
+  });
+  return Object.values(map).sort((a,b)=>b.筆數-a.筆數).slice(0,n);
+}
+
+async function initMonthlyPass(){
+  if(_mpLoaded) return;
+  _mpLoaded = true;
+
+  // 載入月份清單
+  const periods = await api('/api/monthly_pass/periods');
+  const sel = $('mp-ym-sel');
+  sel.innerHTML = periods.map(p=>`<option value="${p.ym}">${p.ym}</option>`).join('');
+  // 預設選最新月
+  if(periods.length) sel.value = periods[periods.length-1].ym;
+
+  // 載入全月方案彙整（SVC+QR 合併）
+  _mpSchemeMonthly = await api('/api/monthly_pass/scheme_monthly');
+
+  await mpLoad();
+}
+
+async function mpLoad(){
+  const ym = $('mp-ym-sel').value;
+  if(!ym) return;
+
+  // 取指定月的方案明細（含體系別）
+  _mpScheme = await api(`/api/monthly_pass/by_scheme?ym=${encodeURIComponent(ym)}`);
+
+  // 計算本月總計
+  const totalXact = _mpScheme.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  const totalAmt  = _mpScheme.reduce((s,r)=>s+(r['交易金額']||0),0);
+  const schemeCount = new Set(_mpScheme.map(r=>r['方案代碼'])).size;
+
+  // KPI
+  $('mp-kpi').innerHTML = `
+    <div class="mp-stat"><div class="label">月份</div><div class="val">${ym}</div></div>
+    <div class="mp-stat"><div class="label">合計交易筆數</div><div class="val">${totalXact.toLocaleString('zh-TW')}</div><div class="sub">筆</div></div>
+    <div class="mp-stat"><div class="label">合計交易金額</div><div class="val">${(totalAmt/1e6).toFixed(1)}</div><div class="sub">百萬元</div></div>
+    <div class="mp-stat"><div class="label">方案數</div><div class="val">${schemeCount}</div><div class="sub">個方案</div></div>
+  `;
+
+  // 方案排行色塊（Top 5）
+  const _CARD_GRADIENTS = [
+    'linear-gradient(135deg,#1a56db,#3b82f6)',
+    'linear-gradient(135deg,#7c3aed,#a78bfa)',
+    'linear-gradient(135deg,#0f766e,#14b8a6)',
+    'linear-gradient(135deg,#b45309,#f59e0b)',
+    'linear-gradient(135deg,#be185d,#f472b6)',
+  ];
+  const topSchemes = mpTopSchemes(_mpScheme, 5);
+  $('mp-sys-cards').innerHTML = topSchemes.map((s,i)=>`
+    <div class="mp-sys-card" style="background:${_CARD_GRADIENTS[i]}">
+      <div class="sys-label"><span style="opacity:.75;font-size:11px;margin-right:5px;font-family:monospace">${s.代碼}</span>${s.名稱}</div>
+      <div class="sys-val">${s.筆數.toLocaleString('zh-TW')} 筆</div>
+      <div class="sys-sub">${(s.金額/1e6).toFixed(2)} 百萬元 ／ 佔比 ${totalXact?((s.筆數/totalXact)*100).toFixed(1):0}%</div>
+    </div>
+  `).join('');
+
+  mpRenderScheme();
+  mpRenderTrendChart();
+  mpRenderPieChart();
+  mpRenderSchemeTrendTable();
+}
+
+function mpRenderScheme(){
+  const sysF = $('mp-sys-filter').value;
+  const rows = sysF ? _mpScheme.filter(r=>r['體系別']===sysF) : _mpScheme;
+  const totalX = rows.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  $('mp-scheme-tbody').innerHTML = rows.map(r=>{
+    const pct = totalX ? ((r['交易筆數']/totalX)*100).toFixed(1) : '0.0';
+    const sysTag = r['體系別']==='SVC'
+      ? `<span class="sys-svc">SVC</span>`
+      : `<span class="sys-qr">QR</span>`;
+    return `<tr>
+      <td>${r['方案代碼']}</td>
+      <td>${r['方案名稱']||''}</td>
+      <td>${sysTag}</td>
+      <td class="num">${(r['交易筆數']||0).toLocaleString('zh-TW')}</td>
+      <td class="num">${(r['交易金額']||0).toLocaleString('zh-TW')}</td>
+      <td class="num">${pct}%</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" class="text-center text-muted py-3">無資料</td></tr>';
+}
+
+function mpRenderSchemeTrendTable(){
+  if(!_mpSchemeMonthly.length) return;
+
+  // 取全期間 top5 方案（依總筆數）
+  const top5 = mpTopSchemes(_mpSchemeMonthly, 5);
+  const topCodes = top5.map(s=>s.代碼);
+  const topNames = top5.map(s=>s.名稱);
+
+  // 月份清單
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
+
+  // 彙整：ym → { code: 筆數, total: 筆數 }
+  const byYm = {};
+  _mpSchemeMonthly.forEach(r=>{
+    if(!byYm[r.ym]) byYm[r.ym]={total:0};
+    byYm[r.ym].total += r['交易筆數']||0;
+    if(topCodes.includes(r['方案代碼']))
+      byYm[r.ym][r['方案代碼']] = (byYm[r.ym][r['方案代碼']]||0) + (r['交易筆數']||0);
+  });
+
+  // 動態表頭
+  document.querySelector('#mp-scheme-trend-thead').innerHTML =
+    '<th>月份</th>' +
+    top5.map(s=>`<th class="text-end"><span style="opacity:.7;font-size:10px;font-family:monospace;display:block">${s.代碼}</span>${s.名稱.length>6?s.名稱.slice(0,6)+'…':s.名稱}</th>`).join('') +
+    '<th class="text-end">其他</th><th class="text-end">合計</th>';
+
+  // 資料列
+  $('mp-scheme-trend-tbody').innerHTML = allYms.map(ym=>{
+    const row = byYm[ym]||{total:0};
+    const topTotal = topCodes.reduce((s,c)=>s+(row[c]||0),0);
+    const other = row.total - topTotal;
+    const cells = topCodes.map(c=>`<td class="num">${(row[c]||0).toLocaleString('zh-TW')}</td>`).join('');
+    return `<tr><td><strong>${ym}</strong></td>${cells}<td class="num">${other.toLocaleString('zh-TW')}</td><td class="num"><strong>${row.total.toLocaleString('zh-TW')}</strong></td></tr>`;
+  }).join('');
+}
+
+function mpRenderTrendChart(){
+  // 取本月 top5 方案代碼
+  const ym = $('mp-ym-sel').value;
+  const curMonthRows = _mpSchemeMonthly.filter(r=>r.ym===ym);
+  const top5 = mpTopSchemes(curMonthRows, 5);
+  const topCodes = top5.map(s=>s.代碼);
+  const topNames = top5.map(s=>s.名稱);
+
+  // 全月份清單
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
+
+  // 每個方案每月筆數
+  const byCode = {};
+  _mpSchemeMonthly.forEach(r=>{
+    if(!topCodes.includes(r['方案代碼'])) return;
+    if(!byCode[r['方案代碼']]) byCode[r['方案代碼']]={};
+    byCode[r['方案代碼']][r.ym] = (byCode[r['方案代碼']][r.ym]||0) + (r['交易筆數']||0);
+  });
+
+  const colors = ['#3b82f6','#a78bfa','#14b8a6','#f59e0b','#f472b6'];
+  const datasets = topCodes.map((code,i)=>({
+    label: topNames[i].length>8 ? topNames[i].slice(0,8)+'…' : topNames[i],
+    data: allYms.map(y=>byCode[code]?.[y]||0),
+    backgroundColor: colors[i],
+    stack:'s'
+  }));
+
+  if(_mpTrendChart) _mpTrendChart.destroy();
+  _mpTrendChart = new Chart($('mp-trend-chart'), {
+    type:'bar',
+    data:{ labels: allYms, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{ticks:{font:{size:10}}},
+        y:{ticks:{font:{size:10}, callback:v=>(v/1e4).toFixed(0)+'萬'}}
+      }
+    }
+  });
+}
+
+function mpRenderPieChart(){
+  const top7 = mpTopSchemes(_mpScheme, 7);
+  const totalX = _mpScheme.reduce((s,r)=>s+(r['交易筆數']||0),0);
+  const topX   = top7.reduce((s,r)=>s+r.筆數,0);
+  const otherX = totalX - topX;
+
+  const labels = top7.map(s=>s.名稱.length>7 ? s.名稱.slice(0,7)+'…' : s.名稱);
+  const data   = top7.map(s=>s.筆數);
+  const colors = ['#3b82f6','#a78bfa','#14b8a6','#f59e0b','#f472b6','#34d399','#fb7185','#94a3b8'];
+  if(otherX>0){ labels.push('其他'); data.push(otherX); }
+
+  if(_mpPieChart) _mpPieChart.destroy();
+  _mpPieChart = new Chart($('mp-pie-chart'), {
+    type:'doughnut',
+    data:{
+      labels,
+      datasets:[{data, backgroundColor:colors.slice(0,data.length), borderWidth:2}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},
+        tooltip:{callbacks:{label:ctx=>{
+          const total=ctx.dataset.data.reduce((a,b)=>a+b,0);
+          return `${ctx.label}: ${ctx.raw.toLocaleString('zh-TW')} 筆 (${total?((ctx.raw/total)*100).toFixed(1):0}%)`;
+        }}}
+      }
+    }
+  });
+}
+
+// ── AI Chat ───────────────────────────────────────────────
+const _chatSessionId = 'sess_' + Math.random().toString(36).slice(2);
+let _chatBusy = false;
+
+async function chatCheckStatus() {
+  try {
+    const d = await fetch('/api/chat/status').then(r => r.json());
+    const dot  = document.getElementById('chat-dot');
+    const txt  = document.getElementById('chat-status-text');
+    const badge = document.getElementById('chat-model-badge');
+    if (!d.ollama) {
+      dot.className = 'dot dot-err';
+      txt.textContent = 'Ollama 未啟動，請執行：ollama serve';
+      return;
+    }
+    if (!d.model_available) {
+      dot.className = 'dot dot-warn';
+      txt.textContent = `模型未下載，請執行：ollama pull ${d.model}`;
+    } else {
+      dot.className = 'dot dot-ok';
+      txt.textContent = '已就緒';
+    }
+    badge.style.display = '';
+    badge.textContent = d.model;
+  } catch(e) {
+    document.getElementById('chat-dot').className = 'dot dot-err';
+    document.getElementById('chat-status-text').textContent = '無法連線到後端';
+  }
+}
+
+function chatChip(el) {
+  const inp = document.getElementById('chat-input');
+  inp.value = el.textContent;
+  inp.focus();
+}
+
+function chatScrollBottom() {
+  const el = document.getElementById('chat-messages');
+  el.scrollTop = el.scrollHeight;
+}
+
+function chatAddThinking() {
+  const div = document.createElement('div');
+  div.className = 'chat-bubble ai';
+  div.id = 'chat-thinking';
+  div.innerHTML = `<div class="chat-thinking">
+    <i class="bi bi-cpu" style="color:#1a56db"></i>
+    <span>Gemma 分析中</span>
+    <span class="dots-anim"><span>.</span><span>.</span><span>.</span></span>
+  </div>`;
+  document.getElementById('chat-messages').appendChild(div);
+  chatScrollBottom();
+}
+
+function chatRemoveThinking() {
+  const el = document.getElementById('chat-thinking');
+  if (el) el.remove();
+}
+
+function chatAddBubble(role, html) {
+  const wrap = document.createElement('div');
+  wrap.className = `chat-bubble ${role}`;
+  const bub = document.createElement('div');
+  bub.className = 'bubble-text';
+  bub.innerHTML = html;
+  wrap.appendChild(bub);
+  document.getElementById('chat-messages').appendChild(wrap);
+  chatScrollBottom();
+}
+
+function chatRenderSQL(sql) {
+  if (!sql) return '';
+  const id = 'sql_' + Date.now();
+  return `<button class="chat-sql-toggle" onclick="document.getElementById('${id}').classList.toggle('open');this.querySelector('i').classList.toggle('bi-chevron-down');this.querySelector('i').classList.toggle('bi-chevron-up')">
+    <i class="bi bi-chevron-down"></i> 查看 SQL
+  </button>
+  <div class="chat-sql-block" id="${id}">${sql.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>`;
+}
+
+function chatRenderTable(rows) {
+  if (!rows || rows.length === 0) return '';
+  const cols = Object.keys(rows[0]);
+  const th = cols.map(c => `<th>${c}</th>`).join('');
+  const trs = rows.map(r =>
+    '<tr>' + cols.map(c => {
+      const v = r[c];
+      const isNum = typeof v === 'number';
+      return `<td${isNum ? ' style="text-align:right"' : ''}>${v == null ? '' : (isNum ? v.toLocaleString('zh-TW') : v)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  return `<div class="chat-result-wrap">
+    <div class="chat-result-header"><i class="bi bi-table"></i> 查詢結果（${rows.length} 筆）</div>
+    <div class="chat-result-scroll">
+      <table class="table chat-result-table"><thead><tr>${th}</tr></thead><tbody>${trs}</tbody></table>
+    </div>
+  </div>`;
+}
+
+async function chatSend() {
+  const inp = document.getElementById('chat-input');
+  const msg = inp.value.trim();
+  if (!msg || _chatBusy) return;
+
+  inp.value = '';
+  inp.style.height = 'auto';
+  _chatBusy = true;
+  document.getElementById('chat-send').disabled = true;
+
+  // User bubble
+  chatAddBubble('user', msg.replace(/</g,'&lt;').replace(/>/g,'&gt;'));
+  chatAddThinking();
+
+  try {
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg, session_id: _chatSessionId})
+    });
+    const d = await resp.json();
+    chatRemoveThinking();
+
+    if (d.error) {
+      chatAddBubble('ai', `<div class="chat-err"><i class="bi bi-exclamation-triangle"></i> ${d.error}</div>`);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'chat-bubble ai';
+
+      // Main response (markdown rendered)
+      const bub = document.createElement('div');
+      bub.className = 'bubble-text';
+      bub.innerHTML = (typeof marked !== 'undefined' ? marked.parse(d.response) : d.response.replace(/\n/g,'<br>'));
+      wrap.appendChild(bub);
+
+      // SQL toggle
+      if (d.sql) {
+        const sqlEl = document.createElement('div');
+        sqlEl.innerHTML = chatRenderSQL(d.sql);
+        wrap.appendChild(sqlEl);
+      }
+
+      // Result table
+      if (d.sql_rows && d.sql_rows.length > 0) {
+        const tblEl = document.createElement('div');
+        tblEl.innerHTML = chatRenderTable(d.sql_rows);
+        wrap.appendChild(tblEl);
+      } else if (d.sql_error) {
+        const errEl = document.createElement('div');
+        errEl.className = 'chat-err';
+        errEl.innerHTML = `<i class="bi bi-exclamation-triangle"></i> SQL 錯誤：${d.sql_error}`;
+        wrap.appendChild(errEl);
+      }
+
+      // Analysis
+      if (d.analysis) {
+        const anlEl = document.createElement('div');
+        anlEl.className = 'chat-analysis';
+        anlEl.innerHTML = (typeof marked !== 'undefined' ? marked.parse(d.analysis) : d.analysis.replace(/\n/g,'<br>'));
+        wrap.appendChild(anlEl);
+      }
+
+      document.getElementById('chat-messages').appendChild(wrap);
+      chatScrollBottom();
+    }
+  } catch(e) {
+    chatRemoveThinking();
+    chatAddBubble('ai', `<div class="chat-err"><i class="bi bi-wifi-off"></i> 連線失敗：${e.message}</div>`);
+  } finally {
+    _chatBusy = false;
+    document.getElementById('chat-send').disabled = false;
+    inp.focus();
+  }
+}
+
+async function chatClear() {
+  await fetch('/api/chat/clear', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: _chatSessionId})});
+  const msgs = document.getElementById('chat-messages');
+  msgs.innerHTML = '';
+  const welcome = document.createElement('div');
+  welcome.className = 'chat-bubble ai';
+  welcome.innerHTML = '<div class="bubble-text">對話已清除，請繼續提問。</div>';
+  msgs.appendChild(welcome);
+}
+
+// Enter to send, Shift+Enter for newline
+document.getElementById('chat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); chatSend(); }
+});
+// Auto-resize textarea
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+
+// Check status when chat page is opened
+document.querySelectorAll('#sidebar .nav-link').forEach(el => {
+  if (el.dataset.page === 'chat') {
+    el.addEventListener('click', () => setTimeout(chatCheckStatus, 100));
+  }
+});
+
+// ── Init ───────────────────────────────────────────────────
+loadDashboard();
+</script>
+</body>
+</html>
