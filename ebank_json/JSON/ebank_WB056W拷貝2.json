@@ -1,0 +1,84 @@
+{
+  "itemName": "WB056W_電子支付機構端末設備共用情形資料維護",
+  "totalRows": 7,
+  "extractedAt": "2026-03-26T11:45:41.547Z",
+  "details": [
+    {
+      "sn": 19,
+      "kind": 1,
+      "kind_text": "設備提供者(房東)",
+      "type_code": 2,
+      "type_code_text": "態樣二",
+      "bank_name": "LINE Pay",
+      "start_date": "2020-08-05T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 8,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "LINE Pay",
+      "start_date": "2018-09-03T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 9,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "中國信託商業銀行",
+      "start_date": "2018-09-03T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 12,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "台新國際商業銀行",
+      "start_date": "2019-03-05T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 14,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "玉山商業銀行",
+      "start_date": "2019-06-20T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 20,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "聯邦商業銀行",
+      "start_date": "2020-08-25T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    },
+    {
+      "sn": 21,
+      "kind": 2,
+      "kind_text": "設備使用者(房客)",
+      "type_code": 1,
+      "type_code_text": "態樣一",
+      "bank_name": "台北富邦商業銀行",
+      "start_date": "2020-10-29T00:00:00",
+      "end_date": null,
+      "_error": "HTTP 405"
+    }
+  ]
+}
