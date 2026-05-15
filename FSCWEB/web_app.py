@@ -66,7 +66,7 @@ def table_list():
     conn = get_conn()
     rows = conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table' "
-        "AND name NOT LIKE '\_%' ESCAPE '\\' ORDER BY name"
+        "AND name NOT LIKE '\\_%' ESCAPE '\\' ORDER BY name"
     ).fetchall()
     conn.close()
     return [r["name"] for r in rows]
@@ -1366,6 +1366,14 @@ def api_import():
                     records = data["details"]
                     added, skipped = _upsert(conn, tbl, records, fname)
                     results.append({"table": tbl, "added": added, "skipped": skipped})
+                # Format 3: ebank_update wrapper {scriptVersion, data: {tableKey: {details}}}
+                elif isinstance(data, dict) and "data" in data and isinstance(data["data"], dict):
+                    for key, content_v in data["data"].items():
+                        if isinstance(content_v, dict) and "details" in content_v:
+                            tbl = key.split("_")[0]
+                            records = content_v["details"]
+                            added, skipped = _upsert(conn, tbl, records, fname)
+                            results.append({"table": tbl, "added": added, "skipped": skipped})
                 # Format 2: {tableKey: {details}}
                 elif isinstance(data, dict):
                     for key, content_v in data.items():

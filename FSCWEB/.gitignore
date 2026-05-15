@@ -5,3 +5,15 @@ __pycache__/
 uploads/
 *.json
 ebank_all_data*.json
+
+# 二進制 / 本機大檔
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# 下載的 ZIP 資料檔
+BB-*.zip

@@ -8,7 +8,7 @@ sleep 1
 
 # 啟動 Flask (port 8080 避開 macOS AirPlay port 5000)
 cd "$(dirname "$0")"
-PORT=8080 python3 web_app.py &
+PORT=8080 /opt/homebrew/bin/python3.12 web_app.py &
 sleep 2
 
 # 啟動 Cloudflare Tunnel

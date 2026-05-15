@@ -6,3 +6,6 @@ openpyxl>=3.1.0
 # 桌面執行檔打包（僅 Windows 打包環境需要）
 pywebview>=4.4.1
 pyinstaller>=6.0
+
+# ebank 月度更新爬蟲
+playwright>=1.40
