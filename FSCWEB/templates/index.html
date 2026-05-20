@@ -49,6 +49,12 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:
 .mp-table .sys-svc{background:#eff6ff;color:#1d4ed8;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
 .mp-table .sys-qr{background:#f5f3ff;color:#6d28d9;padding:1px 7px;border-radius:4px;font-size:11px;font-weight:600}
 .mp-chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+.mp-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s;user-select:none;white-space:nowrap}
+.mp-tag.svc{background:#eff6ff;color:#1a56db;border-color:#bfdbfe}
+.mp-tag.qr{background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe}
+.mp-tag.excluded{background:#f1f5f9!important;color:#94a3b8!important;border-color:#e2e8f0!important;text-decoration:line-through;opacity:.55}
+.mp-tag-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:12px}
+.mp-tag-label{font-size:11px;color:#64748b;white-space:nowrap;margin-right:4px}
 @media(max-width:767.98px){
   .mp-chart-row{grid-template-columns:1fr}
   .mp-sys-card{min-width:120px}
@@ -582,6 +588,24 @@ select.form-select,input.form-control{font-size:13px;border-radius:7px;border-co
 
   <!-- KPI 列 -->
   <div class="mp-stat-row" id="mp-kpi" translate="no"></div>
+
+  <!-- 方案篩選 tags -->
+  <div id="mp-scheme-tags" class="mp-tag-wrap" style="display:none" translate="no"></div>
+
+  <!-- 體系別儀表列（SVC / QR / 合計，含趨勢） -->
+  <div class="row g-2 mb-3" id="mp-sys-kpi" translate="no"></div>
+
+  <!-- 體系別近6月曲線圖 -->
+  <div class="mp-chart-row mb-3" id="mp-sys-line-wrap">
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-graph-up text-primary"></i>SVC / QR 近6月交易筆數</div>
+      <div style="position:relative;height:220px"><canvas id="mp-sys-line-count"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <div class="mp-section-title mb-2"><i class="bi bi-graph-up text-success"></i>SVC / QR 近6月交易金額</div>
+      <div style="position:relative;height:220px"><canvas id="mp-sys-line-amt"></canvas></div>
+    </div>
+  </div>
 
   <!-- 方案排行色塊 -->
   <div class="mp-section-title"><i class="bi bi-trophy text-primary"></i>方案排行（本月 Top 5）</div>
@@ -1747,6 +1771,10 @@ let _mpScheme = [];         // current month schemes (by 方案+體系別)
 let _mpSchemeMonthly = [];  // all months × scheme (SVC+QR combined)
 let _mpTrendChart = null;
 let _mpPieChart = null;
+let _mpSysLineCount = null;
+let _mpSysLineAmt = null;
+let _mpExcluded = new Set();   // 被排除的方案代碼
+let _schemeToSys = {};          // 方案代碼 → 體系別（從當月 _mpScheme 建立）
 
 // 取前 n 名方案（依筆數）
 function mpTopSchemes(schemeRows, n=5){
@@ -1773,6 +1801,7 @@ async function initMonthlyPass(){
 
   // 載入全月方案彙整（SVC+QR 合併）
   _mpSchemeMonthly = await api('/api/monthly_pass/scheme_monthly');
+  _mpBySystem = await api('/api/monthly_pass/by_system');
 
   await mpLoad();
 }
@@ -1797,6 +1826,13 @@ async function mpLoad(){
     <div class="mp-stat"><div class="label">方案數</div><div class="val">${schemeCount}</div><div class="sub">個方案</div></div>
   `;
 
+  // ── 建立方案→體系別對照表，重置排除集合，渲染 tags + 儀表 ────
+  _schemeToSys = {};
+  _mpScheme.forEach(r=>{ _schemeToSys[r['方案代碼']] = r['體系別']; });
+  _mpExcluded = new Set();
+  mpRenderSchemeTags();
+  mpRenderSysKpi();
+
   // 方案排行色塊（Top 5）
   const _CARD_GRADIENTS = [
     'linear-gradient(135deg,#1a56db,#3b82f6)',
@@ -1818,6 +1854,160 @@ async function mpLoad(){
   mpRenderTrendChart();
   mpRenderPieChart();
   mpRenderSchemeTrendTable();
+}
+
+function mpRenderSchemeTags(){
+  const wrap = $('mp-scheme-tags');
+  if(!_mpScheme.length){ wrap.style.display='none'; return; }
+  wrap.style.display='flex';
+
+  // 依體系別分組排序
+  const svcList = _mpScheme.filter(r=>r['體系別']==='SVC').sort((a,b)=>b['交易筆數']-a['交易筆數']);
+  const qrList  = _mpScheme.filter(r=>r['體系別']==='QR').sort((a,b)=>b['交易筆數']-a['交易筆數']);
+
+  const tagHtml = (r) => {
+    const sys = r['體系別']==='SVC' ? 'svc' : 'qr';
+    const name = r['方案名稱'] ? (r['方案名稱'].length>8 ? r['方案名稱'].slice(0,8)+'…' : r['方案名稱']) : r['方案代碼'];
+    return `<span class="mp-tag ${sys}" data-code="${r['方案代碼']}" onclick="mpToggleScheme(this)">
+      <span style="opacity:.65;font-family:monospace;font-size:10px">${r['方案代碼']}</span>${name}
+    </span>`;
+  };
+
+  wrap.innerHTML =
+    `<span class="mp-tag-label">排除方案：</span>` +
+    (svcList.length ? `<span class="mp-tag-label" style="color:#1a56db">SVC</span>` + svcList.map(tagHtml).join('') : '') +
+    (qrList.length  ? `<span class="mp-tag-label" style="color:#7c3aed;margin-left:6px">QR</span>`  + qrList.map(tagHtml).join('')  : '') +
+    `<button class="btn btn-xs btn-link ms-auto" style="font-size:11px;padding:0" onclick="mpClearExclude()">全部顯示</button>`;
+}
+
+function mpToggleScheme(el){
+  const code = el.dataset.code;
+  if(_mpExcluded.has(code)){
+    _mpExcluded.delete(code);
+    el.classList.remove('excluded');
+  } else {
+    _mpExcluded.add(code);
+    el.classList.add('excluded');
+  }
+  mpRenderSysKpi();
+}
+
+function mpClearExclude(){
+  _mpExcluded.clear();
+  $('mp-scheme-tags').querySelectorAll('.mp-tag.excluded').forEach(t=>t.classList.remove('excluded'));
+  mpRenderSysKpi();
+}
+
+function mpRenderSysKpi(){
+  const ym = $('mp-ym-sel').value;
+  if(!_mpScheme.length){ $('mp-sys-kpi').innerHTML = ''; return; }
+
+  // 當月：排除選取方案後計算 SVC / QR / 合計
+  const active = _mpScheme.filter(r => !_mpExcluded.has(r['方案代碼']));
+  const sum = (arr, sys, key) => arr.filter(r=>r['體系別']===sys).reduce((s,r)=>s+(r[key]||0), 0);
+  const svcX = sum(active,'SVC','交易筆數'), svcA = sum(active,'SVC','交易金額');
+  const qrX  = sum(active,'QR', '交易筆數'), qrA  = sum(active,'QR', '交易金額');
+  const totX = svcX + qrX, totA = svcA + qrA;
+
+  // 前月：從 scheme_monthly 取出相同排除集合，用 _schemeToSys 判斷體系別
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
+  const prevYm = allYms[allYms.indexOf(ym) - 1] || null;
+  let prevSvcX=null, prevSvcA=null, prevQrX=null, prevQrA=null, prevTotX=null, prevTotA=null;
+  if(prevYm){
+    const prevActive = _mpSchemeMonthly.filter(r => r.ym===prevYm && !_mpExcluded.has(r['方案代碼']));
+    const psum = (arr, sys, key) => arr.filter(r=>_schemeToSys[r['方案代碼']]===sys).reduce((s,r)=>s+(r[key]||0), 0);
+    prevSvcX = psum(prevActive,'SVC','交易筆數'); prevSvcA = psum(prevActive,'SVC','交易金額');
+    prevQrX  = psum(prevActive,'QR', '交易筆數'); prevQrA  = psum(prevActive,'QR', '交易金額');
+    prevTotX = prevSvcX + prevQrX; prevTotA = prevSvcA + prevQrA;
+  }
+
+  const pct = (cur, prv) => prv ? Math.round((cur - prv) / Math.abs(prv) * 1000) / 10 : null;
+  const _SVC='#1a56db', _QR='#7c3aed', _TOT='#0f766e';
+  const kpis = [
+    {label:'SVC 交易筆數', value:svcX, prev:prevSvcX, pct:pct(svcX,prevSvcX), unit:'筆', color:_SVC},
+    {label:'SVC 交易金額', value:svcA, prev:prevSvcA, pct:pct(svcA,prevSvcA), unit:'元', color:_SVC},
+    {label:'QR 交易筆數',  value:qrX,  prev:prevQrX,  pct:pct(qrX, prevQrX),  unit:'筆', color:_QR},
+    {label:'QR 交易金額',  value:qrA,  prev:prevQrA,  pct:pct(qrA, prevQrA),  unit:'元', color:_QR},
+    {label:'合計筆數',     value:totX, prev:prevTotX, pct:pct(totX,prevTotX), unit:'筆', color:_TOT},
+    {label:'合計金額',     value:totA, prev:prevTotA, pct:pct(totA,prevTotA), unit:'元', color:_TOT},
+  ];
+  $('mp-sys-kpi').innerHTML = kpis.map(k=>`
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="stat-card h-100" style="cursor:default;border-top:3px solid ${k.color}">
+        <div class="stat-label mb-1">${k.label}</div>
+        <div class="stat-num" style="font-size:15px;word-break:break-all">${k.value!=null?k.value.toLocaleString('zh-TW'):'-'}</div>
+        <div class="d-flex justify-content-between align-items-center mt-1">
+          <small class="text-muted">${k.unit}</small>
+          ${trendBadge(k.pct)}
+        </div>
+        <div class="gauge-wrap">${gaugeHtml(k.pct)}</div>
+        ${k.prev!=null?`<div class="text-muted text-center" style="font-size:10px;margin-top:2px">前月：${k.prev.toLocaleString('zh-TW')}</div>`:''}
+      </div>
+    </div>`).join('');
+
+  mpRenderSysLineCharts();
+}
+
+function mpRenderSysLineCharts(){
+  if(!_mpSchemeMonthly.length) return;
+
+  // 取所有月份並排序，只保留最近6個月
+  const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort().slice(-6);
+
+  // 按月份聚合 SVC / QR（套用排除集合 + _schemeToSys）
+  const byYm = {};
+  allYms.forEach(y => { byYm[y] = {svcX:0, svcA:0, qrX:0, qrA:0}; });
+  _mpSchemeMonthly.forEach(r => {
+    if(!allYms.includes(r.ym)) return;
+    if(_mpExcluded.has(r['方案代碼'])) return;
+    const sys = _schemeToSys[r['方案代碼']];
+    if(sys === 'SVC'){ byYm[r.ym].svcX += r['交易筆數']||0; byYm[r.ym].svcA += r['交易金額']||0; }
+    else if(sys === 'QR'){ byYm[r.ym].qrX  += r['交易筆數']||0; byYm[r.ym].qrA  += r['交易金額']||0; }
+  });
+
+  const labels  = allYms;
+  const svcXArr = allYms.map(y=>byYm[y].svcX);
+  const qrXArr  = allYms.map(y=>byYm[y].qrX);
+  const totXArr = allYms.map(y=>byYm[y].svcX + byYm[y].qrX);
+  const svcAArr = allYms.map(y=>byYm[y].svcA);
+  const qrAArr  = allYms.map(y=>byYm[y].qrA);
+  const totAArr = allYms.map(y=>byYm[y].svcA + byYm[y].qrA);
+
+  const lineOpts = (yFmt) => ({
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index', intersect:false},
+    plugins:{
+      legend:{position:'top', labels:{font:{size:11}, boxWidth:14, usePointStyle:true}},
+      tooltip:{callbacks:{label: ctx => `${ctx.dataset.label}: ${yFmt(ctx.raw)}`}}
+    },
+    scales:{
+      x:{ticks:{font:{size:10}}},
+      y:{ticks:{font:{size:10}, callback: yFmt}}
+    }
+  });
+
+  const fmtX = v => v>=1e6 ? (v/1e6).toFixed(2)+'M' : v>=1e4 ? (v/1e4).toFixed(1)+'萬' : v.toLocaleString('zh-TW');
+  const fmtA = v => v>=1e8 ? (v/1e8).toFixed(2)+'億' : v>=1e6 ? (v/1e6).toFixed(1)+'百萬' : v.toLocaleString('zh-TW');
+
+  const mkDatasets = (svc, qr, tot) => [
+    {label:'SVC', data:svc, borderColor:'#1a56db', backgroundColor:'rgba(26,86,219,.12)', fill:true, tension:.35, pointRadius:4, pointHoverRadius:6},
+    {label:'QR',  data:qr,  borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,.12)', fill:true, tension:.35, pointRadius:4, pointHoverRadius:6},
+    {label:'SVC+QR', data:tot, borderColor:'#0f766e', backgroundColor:'transparent', borderDash:[5,3], tension:.35, pointRadius:4, pointHoverRadius:6},
+  ];
+
+  if(_mpSysLineCount) _mpSysLineCount.destroy();
+  _mpSysLineCount = new Chart($('mp-sys-line-count'), {
+    type:'line',
+    data:{ labels, datasets: mkDatasets(svcXArr, qrXArr, totXArr) },
+    options: lineOpts(fmtX)
+  });
+
+  if(_mpSysLineAmt) _mpSysLineAmt.destroy();
+  _mpSysLineAmt = new Chart($('mp-sys-line-amt'), {
+    type:'line',
+    data:{ labels, datasets: mkDatasets(svcAArr, qrAArr, totAArr) },
+    options: lineOpts(fmtA)
+  });
 }
 
 function mpRenderScheme(){

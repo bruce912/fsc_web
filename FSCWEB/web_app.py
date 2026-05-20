@@ -1427,6 +1427,8 @@ def _parse_monthly_pass_excel(file_bytes: bytes) -> list:
     import openpyxl
 
     CORE = ["方案代碼", "方案名稱", "體系別", "交易筆數", "交易金額", "統計年月", "資料最後更新日期"]
+    # 部分工作表的「方案代碼」欄標題誤存為「案代碼」，統一對應
+    HEADER_ALIAS = {"案代碼": "方案代碼"}
     records = []
 
     wb = openpyxl.load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
@@ -1436,10 +1438,11 @@ def _parse_monthly_pass_excel(file_bytes: bytes) -> list:
 
         for row_i, row in enumerate(ws.iter_rows(values_only=True)):
             if row_i == 0:
-                # 建立欄位索引（只取核心欄）
+                # 建立欄位索引（只取核心欄，並套用別名對應）
                 for j, h in enumerate(row):
-                    if h in CORE:
-                        col_idx[h] = j
+                    canonical = HEADER_ALIAS.get(h, h)
+                    if canonical in CORE:
+                        col_idx[canonical] = j
                 if "方案代碼" not in col_idx or "統計年月" not in col_idx:
                     break  # 非月票格式，跳過
                 continue
