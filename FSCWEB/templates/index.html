@@ -52,6 +52,7 @@ body{background:var(--bg);font-family:'Segoe UI',system-ui,sans-serif;font-size:
 .mp-tag{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s;user-select:none;white-space:nowrap}
 .mp-tag.svc{background:#eff6ff;color:#1a56db;border-color:#bfdbfe}
 .mp-tag.qr{background:#f5f3ff;color:#7c3aed;border-color:#ddd6fe}
+.mp-tag.both{background:#f0fdf4;color:#0f766e;border-color:#99f6e4}
 .mp-tag.excluded{background:#f1f5f9!important;color:#94a3b8!important;border-color:#e2e8f0!important;text-decoration:line-through;opacity:.55}
 .mp-tag-wrap{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 14px;background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:12px}
 .mp-tag-label{font-size:11px;color:#64748b;white-space:nowrap;margin-right:4px}
@@ -1768,13 +1769,12 @@ function docsFilter(q){
 let _mpLoaded = false;
 let _mpBySystem = [];       // all months × system (SVC/QR)
 let _mpScheme = [];         // current month schemes (by 方案+體系別)
-let _mpSchemeMonthly = [];  // all months × scheme (SVC+QR combined)
+let _mpSchemeMonthly = [];  // all months × scheme × 體系別
 let _mpTrendChart = null;
 let _mpPieChart = null;
 let _mpSysLineCount = null;
 let _mpSysLineAmt = null;
 let _mpExcluded = new Set();   // 被排除的方案代碼
-let _schemeToSys = {};          // 方案代碼 → 體系別（從當月 _mpScheme 建立）
 
 // 取前 n 名方案（依筆數）
 function mpTopSchemes(schemeRows, n=5){
@@ -1826,9 +1826,7 @@ async function mpLoad(){
     <div class="mp-stat"><div class="label">方案數</div><div class="val">${schemeCount}</div><div class="sub">個方案</div></div>
   `;
 
-  // ── 建立方案→體系別對照表，重置排除集合，渲染 tags + 儀表 ────
-  _schemeToSys = {};
-  _mpScheme.forEach(r=>{ _schemeToSys[r['方案代碼']] = r['體系別']; });
+  // 重置排除集合，渲染 tags + 儀表
   _mpExcluded = new Set();
   mpRenderSchemeTags();
   mpRenderSysKpi();
@@ -1861,12 +1859,26 @@ function mpRenderSchemeTags(){
   if(!_mpScheme.length){ wrap.style.display='none'; return; }
   wrap.style.display='flex';
 
-  // 依體系別分組排序
-  const svcList = _mpScheme.filter(r=>r['體系別']==='SVC').sort((a,b)=>b['交易筆數']-a['交易筆數']);
-  const qrList  = _mpScheme.filter(r=>r['體系別']==='QR').sort((a,b)=>b['交易筆數']-a['交易筆數']);
+  // 找出同時有 SVC 和 QR 的方案代碼（雙系別方案）
+  const svcCodes = new Set(_mpScheme.filter(r=>r['體系別']==='SVC').map(r=>r['方案代碼']));
+  const qrCodes  = new Set(_mpScheme.filter(r=>r['體系別']==='QR').map(r=>r['方案代碼']));
+  const bothCodes = new Set([...svcCodes].filter(c=>qrCodes.has(c)));
 
-  const tagHtml = (r) => {
-    const sys = r['體系別']==='SVC' ? 'svc' : 'qr';
+  // 分組：SVC 專屬、QR 專屬、雙系別（取合計筆數排序）
+  const svcOnly = _mpScheme.filter(r=>r['體系別']==='SVC' && !bothCodes.has(r['方案代碼']))
+                            .sort((a,b)=>b['交易筆數']-a['交易筆數']);
+  const qrOnly  = _mpScheme.filter(r=>r['體系別']==='QR'  && !bothCodes.has(r['方案代碼']))
+                            .sort((a,b)=>b['交易筆數']-a['交易筆數']);
+  // 雙系別：每個代碼只取一筆（合計）用於顯示
+  const bothMap = {};
+  _mpScheme.filter(r=>bothCodes.has(r['方案代碼'])).forEach(r=>{
+    const k = r['方案代碼'];
+    if(!bothMap[k]) bothMap[k]={方案代碼:k, 方案名稱:r['方案名稱'], 交易筆數:0};
+    bothMap[k].交易筆數 += r['交易筆數']||0;
+  });
+  const bothList = Object.values(bothMap).sort((a,b)=>b.交易筆數-a.交易筆數);
+
+  const tagHtml = (r, sys) => {
     const name = r['方案名稱'] ? (r['方案名稱'].length>8 ? r['方案名稱'].slice(0,8)+'…' : r['方案名稱']) : r['方案代碼'];
     return `<span class="mp-tag ${sys}" data-code="${r['方案代碼']}" onclick="mpToggleScheme(this)">
       <span style="opacity:.65;font-family:monospace;font-size:10px">${r['方案代碼']}</span>${name}
@@ -1875,8 +1887,9 @@ function mpRenderSchemeTags(){
 
   wrap.innerHTML =
     `<span class="mp-tag-label">排除方案：</span>` +
-    (svcList.length ? `<span class="mp-tag-label" style="color:#1a56db">SVC</span>` + svcList.map(tagHtml).join('') : '') +
-    (qrList.length  ? `<span class="mp-tag-label" style="color:#7c3aed;margin-left:6px">QR</span>`  + qrList.map(tagHtml).join('')  : '') +
+    (svcOnly.length ? `<span class="mp-tag-label" style="color:#1a56db">SVC</span>` + svcOnly.map(r=>tagHtml(r,'svc')).join('') : '') +
+    (qrOnly.length  ? `<span class="mp-tag-label" style="color:#7c3aed;margin-left:6px">QR</span>`  + qrOnly.map(r=>tagHtml(r,'qr')).join('')  : '') +
+    (bothList.length ? `<span class="mp-tag-label" style="color:#0f766e;margin-left:6px">SVC+QR</span>` + bothList.map(r=>tagHtml(r,'both')).join('') : '') +
     `<button class="btn btn-xs btn-link ms-auto" style="font-size:11px;padding:0" onclick="mpClearExclude()">全部顯示</button>`;
 }
 
@@ -1884,10 +1897,11 @@ function mpToggleScheme(el){
   const code = el.dataset.code;
   if(_mpExcluded.has(code)){
     _mpExcluded.delete(code);
-    el.classList.remove('excluded');
+    // 同步所有相同代碼的 tag
+    $('mp-scheme-tags').querySelectorAll(`.mp-tag[data-code="${CSS.escape(code)}"]`).forEach(t=>t.classList.remove('excluded'));
   } else {
     _mpExcluded.add(code);
-    el.classList.add('excluded');
+    $('mp-scheme-tags').querySelectorAll(`.mp-tag[data-code="${CSS.escape(code)}"]`).forEach(t=>t.classList.add('excluded'));
   }
   mpRenderSysKpi();
 }
@@ -1909,13 +1923,13 @@ function mpRenderSysKpi(){
   const qrX  = sum(active,'QR', '交易筆數'), qrA  = sum(active,'QR', '交易金額');
   const totX = svcX + qrX, totA = svcA + qrA;
 
-  // 前月：從 scheme_monthly 取出相同排除集合，用 _schemeToSys 判斷體系別
+  // 前月：從 scheme_monthly 取出相同排除集合，直接用 體系別 欄位分流
   const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort();
   const prevYm = allYms[allYms.indexOf(ym) - 1] || null;
   let prevSvcX=null, prevSvcA=null, prevQrX=null, prevQrA=null, prevTotX=null, prevTotA=null;
   if(prevYm){
     const prevActive = _mpSchemeMonthly.filter(r => r.ym===prevYm && !_mpExcluded.has(r['方案代碼']));
-    const psum = (arr, sys, key) => arr.filter(r=>_schemeToSys[r['方案代碼']]===sys).reduce((s,r)=>s+(r[key]||0), 0);
+    const psum = (arr, sys, key) => arr.filter(r=>r['體系別']===sys).reduce((s,r)=>s+(r[key]||0), 0);
     prevSvcX = psum(prevActive,'SVC','交易筆數'); prevSvcA = psum(prevActive,'SVC','交易金額');
     prevQrX  = psum(prevActive,'QR', '交易筆數'); prevQrA  = psum(prevActive,'QR', '交易金額');
     prevTotX = prevSvcX + prevQrX; prevTotA = prevSvcA + prevQrA;
@@ -1954,13 +1968,13 @@ function mpRenderSysLineCharts(){
   // 取所有月份並排序，只保留最近6個月
   const allYms = [...new Set(_mpSchemeMonthly.map(r=>r.ym))].sort().slice(-6);
 
-  // 按月份聚合 SVC / QR（套用排除集合 + _schemeToSys）
+  // 按月份聚合 SVC / QR（套用排除集合，直接用 體系別 欄位分流）
   const byYm = {};
   allYms.forEach(y => { byYm[y] = {svcX:0, svcA:0, qrX:0, qrA:0}; });
   _mpSchemeMonthly.forEach(r => {
     if(!allYms.includes(r.ym)) return;
     if(_mpExcluded.has(r['方案代碼'])) return;
-    const sys = _schemeToSys[r['方案代碼']];
+    const sys = r['體系別'];
     if(sys === 'SVC'){ byYm[r.ym].svcX += r['交易筆數']||0; byYm[r.ym].svcA += r['交易金額']||0; }
     else if(sys === 'QR'){ byYm[r.ym].qrX  += r['交易筆數']||0; byYm[r.ym].qrA  += r['交易金額']||0; }
   });

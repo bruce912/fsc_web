@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, jsonify, request, render_template, send_file
+from jinja2 import DictLoader
 
 # PyInstaller 打包後，資源在 sys._MEIPASS；開發時用 __file__ 所在目錄
 if getattr(sys, "frozen", False):
@@ -34,6 +35,17 @@ app = Flask(__name__,
             template_folder=str(_BUNDLE_DIR / "templates"),
             static_folder=str(_BUNDLE_DIR / "static"))
 app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
+app.config["TEMPLATES_AUTO_RELOAD"] = False
+app.jinja_env.auto_reload = False
+
+# 將所有模板讀入記憶體，使用 DictLoader 取代 FileSystemLoader
+# 解決 macOS gunicorn multi-worker fork 後 Jinja2 f.read() EDEADLK 問題
+_tmpl_dir = _BUNDLE_DIR / "templates"
+_tmpl_dict = {
+    str(p.relative_to(_tmpl_dir)): p.read_text(encoding="utf-8")
+    for p in _tmpl_dir.rglob("*.html")
+}
+app.jinja_env.loader = DictLoader(_tmpl_dict)
 
 TABLE_DESC = {
     "EC002W": "儲值卡發行資料",      "EC011W": "儲值卡類型",
@@ -929,7 +941,9 @@ DASHBOARD_KPI = [
 ]
 
 def _fetch_kpi_value(conn, tbl, col, yr, mn, filter_sql=""):
-    """取得特定月份某欄位的加總值，回傳 float or None"""
+    """取得特定月份某欄位的加總值，回傳 float or None。
+    若篩選條件查無值（該期資料的標籤欄為 NULL），且該期只有 1 筆時自動 fallback。
+    """
     try:
         extra = f"AND ({filter_sql})" if filter_sql else ""
         row = conn.execute(
@@ -937,7 +951,19 @@ def _fetch_kpi_value(conn, tbl, col, yr, mn, filter_sql=""):
             f'WHERE yr=? AND mn=? {extra}',
             [yr, mn]
         ).fetchone()
-        return round(float(row[0]), 2) if row and row[0] is not None else None
+        val = round(float(row[0]), 2) if row and row[0] is not None else None
+        # Fallback：篩選回 NULL 且該期只有 1 筆 → 直接取值（新格式資料標籤欄可能為 NULL）
+        if val is None and filter_sql:
+            count = conn.execute(
+                f'SELECT COUNT(*) FROM "{tbl}" WHERE yr=? AND mn=?', [yr, mn]
+            ).fetchone()[0]
+            if count == 1:
+                row2 = conn.execute(
+                    f'SELECT SUM(CAST("{col}" AS REAL)) FROM "{tbl}" WHERE yr=? AND mn=?',
+                    [yr, mn]
+                ).fetchone()
+                val = round(float(row2[0]), 2) if row2 and row2[0] is not None else None
+        return val
     except Exception:
         return None
 
@@ -2110,20 +2136,20 @@ def mp_latest_summary():
 
 @app.route("/api/monthly_pass/scheme_monthly")
 def mp_scheme_monthly():
-    """各月份 × 方案 彙整（SVC+QR 加總）"""
+    """各月份 × 方案 × 體系別 彙整"""
     conn = get_conn()
     if not _table_exists(conn, "月票交易統計"):
         conn.close()
         return jsonify([])
     rows = conn.execute('''
-        SELECT yr, mn, ym, 方案代碼, 方案名稱,
+        SELECT yr, mn, ym, 方案代碼, 方案名稱, 體系別,
                SUM(交易筆數) AS 交易筆數, SUM(交易金額) AS 交易金額
         FROM "月票交易統計"
-        GROUP BY yr, mn, ym, 方案代碼, 方案名稱
-        ORDER BY yr, mn, 方案代碼
+        GROUP BY yr, mn, ym, 方案代碼, 方案名稱, 體系別
+        ORDER BY yr, mn, 方案代碼, 體系別
     ''').fetchall()
     conn.close()
-    return jsonify([{"yr":r[0],"mn":r[1],"ym":r[2],"方案代碼":r[3],"方案名稱":r[4],"交易筆數":r[5],"交易金額":r[6]} for r in rows])
+    return jsonify([{"yr":r[0],"mn":r[1],"ym":r[2],"方案代碼":r[3],"方案名稱":r[4],"體系別":r[5],"交易筆數":r[6],"交易金額":r[7]} for r in rows])
 
 # ══════════════════════════════════════════════════════════
 # Page
