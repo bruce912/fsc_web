@@ -93,6 +93,25 @@ startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT
 
 ---
 
+## 靜態網站輸出（第一階段）
+
+靜態版保留儀表板、資料瀏覽、月份比較、趨勢、全業者統計、月票統計、文件與 CSV 匯出；資料匯入及 Ollama 聊天仍只在本機 Flask 版本提供。
+
+```bash
+# 先建立最新版 SQLite
+python3 build_database.py
+
+# 輸出至 FSCWEB/static_site/
+python3 export_static_site.py
+
+# 本機預覽
+python3 -m http.server 8001 --directory static_site
+```
+
+開啟 [http://127.0.0.1:8001](http://127.0.0.1:8001)。每月更新資料庫後重新執行 `export_static_site.py` 即可產生新版靜態資料。
+
+---
+
 ## 支援的資料表
 
 | 代碼 | 說明 |

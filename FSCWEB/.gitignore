@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 .env
 uploads/
+static_site/
 *.json
 ebank_all_data*.json
 
