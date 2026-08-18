@@ -1,16 +1,20 @@
 # FSC 電子支付資料 Web 系統
 
-金融監督管理委員會（FSC）電子支付業務統計資料查詢與管理平台，支援本機執行與雲端部署（Render）。
+金融監督管理委員會（FSC）電子支付業務統計資料查詢與管理平台。正式環境為 Cloudflare Pages 靜態網站；Flask 版本保留供本機資料管理與開發使用。
+
+> 最新正式架構、每月更新、GitHub Actions、Cloudflare 部署與故障排除，請參閱
+> [系統架構與維護手冊](./系統架構與維護手冊.md)。
 
 ---
 
 ## 功能概覽
 
 - 瀏覽、查詢電子支付各類統計報表（27 種資料表）
+- 全業者統計公開資料自動更新
 - 上傳 JSON 增量資料自動匯入 SQLite 資料庫
 - 匯出 CSV / Excel 格式報表
 - 行政院月票方案交易統計整合
-- 支援 Render 雲端一鍵部署
+- GitHub Actions 排程與 Cloudflare Pages 自動部署
 
 ---
 
@@ -21,10 +25,13 @@ FSCWEB/
 ├── web_app.py          # Flask 主應用程式
 ├── build_database.py   # 資料庫初始化 / 建置腳本
 ├── migrate_database.py # 資料庫版本遷移腳本
+├── update_industry_stats.py # 全業者統計公開資料自動更新
+├── import_disclosure_zip.py # 公開揭露 ZIP 匯入
+├── export_static_site.py    # SQLite / Flask → 靜態網站
 ├── launcher.py         # 桌面版啟動器（pywebview）
 ├── fsc_ebank.db        # SQLite 資料庫
 ├── requirements.txt    # Python 相依套件
-├── render.yaml         # Render 雲端部署設定
+├── static_site/        # Cloudflare Pages 部署內容
 ├── start.sh            # Linux/macOS 快速啟動腳本
 ├── build.bat           # Windows 打包腳本（PyInstaller）
 ├── templates/
@@ -75,9 +82,9 @@ bash start.sh
 
 ---
 
-## 雲端部署（Render）
+## 舊版動態部署（Render，非目前正式環境）
 
-本專案已包含 `render.yaml`，可直接部署至 [Render](https://render.com)。
+本專案仍保留 `render.yaml`，可部署動態 Flask 版本至 [Render](https://render.com)，但目前正式網站使用 Cloudflare Pages。
 
 ```yaml
 runtime: python
@@ -93,7 +100,7 @@ startCommand: gunicorn web_app:app --bind 0.0.0.0:$PORT
 
 ---
 
-## 靜態網站輸出（第一階段）
+## 正式靜態網站輸出
 
 靜態版保留儀表板、資料瀏覽、月份比較、趨勢、全業者統計、月票統計、文件與 CSV 匯出；資料匯入及 Ollama 聊天仍只在本機 Flask 版本提供。
 
@@ -169,5 +176,6 @@ GitHub Actions 會在每月 12、19 日自動檢查，也可在 Actions 頁面�
 
 - **後端**：Python / Flask / SQLite
 - **前端**：HTML / CSS / JavaScript
-- **部署**：Gunicorn / Render
+- **正式部署**：GitHub Actions / Cloudflare Pages
+- **舊版動態部署**：Gunicorn / Render
 - **桌面版**：PyInstaller + pywebview
