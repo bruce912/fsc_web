@@ -1,0 +1,66 @@
+name: Update FSC industry statistics
+
+on:
+  workflow_dispatch:
+  schedule:
+    # FSC usually publishes during the following month. Check twice monthly.
+    - cron: "15 2 12,19 * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-fsc-industry-stats
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: FSCWEB/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r FSCWEB/requirements.txt
+
+      - name: Download and import new FSC disclosure data
+        id: data
+        run: python FSCWEB/update_industry_stats.py
+
+      - name: Check whether data changed
+        id: changes
+        run: |
+          if git diff --quiet -- FSCWEB/fsc_ebank.db FSCWEB/電子支付機構_全業者統計.csv; then
+            echo "updated=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "updated=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rebuild static site
+        if: steps.changes.outputs.updated == 'true'
+        run: python FSCWEB/export_static_site.py
+
+      - name: Commit updated data
+        if: steps.changes.outputs.updated == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add FSCWEB/fsc_ebank.db FSCWEB/電子支付機構_全業者統計.csv FSCWEB/static_site
+          git commit -m "data: update FSC industry statistics"
+          git push
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.changes.outputs.updated == 'true' && env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy FSCWEB/static_site --project-name=fsc-web --branch=feat/static-site-export

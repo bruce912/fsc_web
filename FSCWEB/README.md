@@ -110,6 +110,23 @@ python3 -m http.server 8001 --directory static_site
 
 開啟 [http://127.0.0.1:8001](http://127.0.0.1:8001)。每月更新資料庫後重新執行 `export_static_site.py` 即可產生新版靜態資料。
 
+### 全業者統計自動更新
+
+公開揭露資料不需登入，可直接檢查金管會最新 ZIP、匯入 SQLite，並同步歷史 CSV：
+
+```bash
+# 只檢查是否有新月份
+python3 update_industry_stats.py --dry-run
+
+# 下載資料庫最新月份之後的新資料並匯入
+python3 update_industry_stats.py
+python3 export_static_site.py
+```
+
+GitHub Actions 會在每月 12、19 日自動檢查，也可在 Actions 頁面手動執行
+`Update FSC industry statistics`。若設定 `CLOUDFLARE_API_TOKEN` 與
+`CLOUDFLARE_ACCOUNT_ID` repository secrets，資料有變動時會自動重新部署 Pages。
+
 ---
 
 ## 支援的資料表
